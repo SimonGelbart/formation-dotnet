@@ -5,60 +5,60 @@
 À la fin de ce chapitre, tu dois savoir :
 
 - distinguer SDK et runtime ;
-- vérifier l'environnement installé avec `dotnet --info` ;
-- comprendre la structure d'une solution et d'un projet ;
-- comprendre la différence entre `.slnx` et `.sln` dans l'écosystème actuel ;
-- lire les éléments essentiels d'un fichier `.csproj` ;
-- comprendre le rôle d'un `global.json` ;
+- vérifier l'environnement avec `dotnet --info` ;
+- comprendre projet, solution et `.csproj` ;
+- lire `TargetFramework`, `Nullable` et `ImplicitUsings` ;
+- comprendre `.slnx` et `.sln` ;
+- comprendre `global.json` ;
 - utiliser les commandes `dotnet` principales ;
-- comprendre les références entre projets ;
-- comprendre le rôle de NuGet ;
-- ajouter, restaurer et mettre à jour une dépendance ;
-- comprendre les dépendances transitives ;
-- comprendre le principe des outils .NET comme `dotnet-ef`.
+- distinguer `ProjectReference`, `PackageReference` et outil .NET ;
+- comprendre NuGet et les dépendances transitives ;
+- installer et identifier `dotnet-ef`.
+
+Le chapitre 0 t'a appris juste assez de CLI pour lancer du code. Ici, on comprend réellement l'écosystème.
 
 ---
 
-## 1. SDK vs runtime
+# 1. SDK vs runtime
 
-### Runtime
+## Runtime
 
-Le runtime permet **d'exécuter** une application .NET déjà construite.
+Permet d'exécuter une application .NET déjà construite.
 
-### SDK
+## SDK
 
-Le SDK contient les outils nécessaires pour développer :
+Contient les outils de développement :
 
-- compiler ;
-- créer des projets ;
-- restaurer les packages ;
-- lancer les tests ;
-- publier l'application.
+```text
+création de projets
+compilation
+restore NuGet
+tests
+publication
+outils CLI
+```
 
-Pour un poste de développement, on installe généralement le SDK.
+Sur un poste de développement, on installe généralement le SDK.
 
-### Vérifier l'environnement
+### Vérifier
 
 ```bash
 dotnet --info
 ```
 
-Cette commande permet notamment d'identifier :
+Observe :
 
-- les SDK installés ;
-- les runtimes installés ;
-- l'architecture et le système ;
-- la version réellement sélectionnée.
-
-C'est souvent la première commande utile lorsqu'un projet fonctionne sur une machine mais pas sur une autre.
+- SDK installés ;
+- runtimes ;
+- architecture ;
+- système ;
+- SDK réellement sélectionné.
 
 ---
 
-## 2. Projet et solution
+# 2. Lire un `.csproj`
 
-Un projet .NET est décrit par un fichier `.csproj`.
-
-Exemple simplifié :
+Exemple :
 
 ```xml
 <Project Sdk="Microsoft.NET.Sdk.Web">
@@ -70,17 +70,61 @@ Exemple simplifié :
 </Project>
 ```
 
-### Solution
+Ne le regarde pas comme du XML mystérieux.
 
-Une solution sert principalement à regrouper plusieurs projets travaillant ensemble.
+## `Sdk="Microsoft.NET.Sdk.Web"`
 
-Avec .NET 10, la commande :
+Indique que le projet utilise le SDK web, avec les conventions et références nécessaires à ASP.NET Core.
+
+## `TargetFramework`
+
+```xml
+<TargetFramework>net10.0</TargetFramework>
+```
+
+Le projet cible .NET 10.
+
+## `Nullable`
+
+```xml
+<Nullable>enable</Nullable>
+```
+
+Active notamment l'analyse des Nullable Reference Types utilisée au chapitre 1.
+
+## `ImplicitUsings`
+
+```xml
+<ImplicitUsings>enable</ImplicitUsings>
+```
+
+Le SDK ajoute automatiquement certains `using` courants selon le type de projet.
+
+### Exercice
+
+Désactive temporairement `ImplicitUsings`, compile et observe les erreurs. Remets ensuite la configuration initiale.
+
+---
+
+# 3. Projet et solution
+
+Le `.csproj` décrit **un projet**.
+
+Une solution regroupe plusieurs projets qui travaillent ensemble.
+
+Avec .NET 10 :
 
 ```bash
 dotnet new sln -n Formation
 ```
 
-crée par défaut le format moderne **`.slnx`**.
+crée par défaut :
+
+```text
+Formation.slnx
+```
+
+Exemple :
 
 ```text
 Formation.slnx
@@ -90,25 +134,21 @@ Formation.slnx
 └── Formation.Infrastructure
 ```
 
-Si un environnement exige explicitement l'ancien format `.sln`, on peut le demander :
+Pour demander explicitement l'ancien format :
 
 ```bash
 dotnet new sln -n Formation --format sln
 ```
 
-Le concept important est la solution, pas l'extension à mémoriser.
-
-Cette séparation n'est pas obligatoire. Une petite application peut parfaitement commencer avec un seul projet.
+La présence de plusieurs projets n'est pas un signe automatique de qualité. Une petite application peut parfaitement commencer avec un seul projet applicatif.
 
 ---
 
-## 3. `global.json` : choisir le SDK du dépôt
+# 4. `global.json`
 
-Une machine peut avoir plusieurs SDK installés.
+Une machine peut avoir plusieurs SDK.
 
-Un dépôt peut fournir un `global.json` afin de préciser la version ou la politique de sélection du SDK attendue.
-
-Exemple :
+Un dépôt peut préciser sa politique de sélection :
 
 ```json
 {
@@ -119,25 +159,21 @@ Exemple :
 }
 ```
 
-Le numéro exact dépend évidemment de la version choisie par l'équipe.
+Le numéro exact dépend du dépôt.
 
-### Pourquoi c'est utile ?
-
-Sans règle de sélection, deux développeurs peuvent construire le même dépôt avec des SDK différents et obtenir des comportements ou warnings différents.
-
-Le `global.json` n'est pas obligatoire, mais il rend l'environnement de développement plus explicite.
+`global.json` n'est pas obligatoire, mais permet de rendre l'environnement attendu plus explicite.
 
 ---
 
-## 4. Les commandes `dotnet` à connaître
+# 5. Commandes de base
 
-Créer un projet :
+Créer une API Controllers :
 
 ```bash
 dotnet new webapi --use-controllers -n Formation.Api
 ```
 
-Restaurer les packages :
+Restaurer :
 
 ```bash
 dotnet restore
@@ -155,7 +191,7 @@ Lancer :
 dotnet run
 ```
 
-Lancer les tests :
+Tester :
 
 ```bash
 dotnet test
@@ -167,36 +203,23 @@ Publier :
 dotnet publish
 ```
 
-### Exercice
-
-Crée une solution vide, ajoute un projet Web API utilisant des controllers puis un projet de tests. Lance `dotnet build` depuis la racine.
-
-Vérifie ensuite la version utilisée avec :
-
-```bash
-dotnet --info
-```
+`dotnet build` effectue généralement un restore implicite s'il est nécessaire.
 
 ---
 
-## 5. Références entre projets
+# 6. Références entre projets
 
-Supposons :
-
-```text
-Api
-Application
-Domain
-Infrastructure
-```
-
-Un projet peut référencer un autre projet :
+Avec .NET 10, la forme noun-first est :
 
 ```bash
-dotnet add Formation.Api reference Formation.Application
+dotnet reference add \
+  Formation.Application/Formation.Application.csproj \
+  --project Formation.Api/Formation.Api.csproj
 ```
 
-Cette relation apparaît dans le `.csproj` sous la forme d'un `ProjectReference`.
+L'ancienne forme `dotnet add ... reference ...` continue d'exister dans de nombreux projets et documentations.
+
+Dans le `.csproj` :
 
 ```xml
 <ItemGroup>
@@ -204,37 +227,25 @@ Cette relation apparaît dans le `.csproj` sous la forme d'un `ProjectReference`
 </ItemGroup>
 ```
 
-### Question importante
+### Impact architectural
 
-Le sens de ces références forme aussi le **graphe de dépendances de l'architecture**.
+Une `ProjectReference` n'est pas qu'un détail de build : elle crée une dépendance de code entre deux projets.
 
-Si `Domain` référence `Infrastructure`, ce choix a un impact architectural. Il ne faut donc pas ajouter des références mécaniquement simplement pour faire compiler le code.
+Si `Domain` référence `Infrastructure`, ce choix change le sens de dépendance de l'architecture.
 
 ---
 
-## 6. NuGet
+# 7. NuGet
 
-NuGet joue un rôle comparable à npm dans l'écosystème JavaScript.
+NuGet joue un rôle comparable à npm dans l'écosystème JavaScript, même si les modèles de projet diffèrent.
 
-```text
-npm package
-   ↕
-NuGet package
-```
-
-Avec la CLI moderne, on peut ajouter un package avec :
+Ajouter un package en .NET 10 :
 
 ```bash
 dotnet package add Some.Package
 ```
 
-Tu rencontreras également encore beaucoup l'ancienne forme :
-
-```bash
-dotnet add package Some.Package
-```
-
-Le projet obtient ensuite une référence similaire à :
+Dans le projet :
 
 ```xml
 <ItemGroup>
@@ -242,139 +253,147 @@ Le projet obtient ensuite une référence similaire à :
 </ItemGroup>
 ```
 
-Le point à retenir est le `PackageReference` dans le projet, pas seulement la syntaxe de la commande.
+### ProjectReference vs PackageReference
+
+```text
+ProjectReference
+→ autre projet source de la solution
+
+PackageReference
+→ package NuGet versionné
+```
 
 ---
 
-## 7. Restore
-
-Le dépôt Git ne contient généralement pas les binaires de toutes les dépendances.
+# 8. Restore
 
 `dotnet restore` :
 
-1. lit les références de packages ;
-2. détermine les versions nécessaires ;
+1. lit les références ;
+2. résout les versions ;
 3. récupère les packages absents ;
-4. prépare les informations utilisées par le build.
+4. prépare les informations nécessaires au build.
 
-`dotnet build` déclenche généralement aussi un restore si nécessaire.
-
-On lance néanmoins explicitement `restore` dans certains pipelines ou pour diagnostiquer un problème de dépendances.
+Le dépôt Git ne versionne généralement pas tous les binaires des packages.
 
 ---
 
-## 8. Dépendances transitives
-
-Si :
+# 9. Dépendances transitives
 
 ```text
 Application
-  ↓ utilise
+  ↓
 Package A
-  ↓ utilise
+  ↓
 Package B
 ```
 
-alors `Package B` est une dépendance transitive d'`Application`.
+`Package B` est une dépendance transitive.
 
-Tu ne l'as pas nécessairement ajoutée toi-même, mais elle fait partie du graphe de dépendances final.
-
-Cela explique pourquoi une application peut dépendre de beaucoup plus de packages qu'il n'y a de `PackageReference` directement visibles dans un projet.
-
-### Exercice
-
-Dans un projet réel, utilise :
+Avec .NET 10 :
 
 ```bash
-dotnet list package --include-transitive
+dotnet package list --include-transitive
 ```
 
-ou la commande équivalente disponible dans ton SDK pour observer les dépendances directes et transitives.
+Tu peux aussi examiner les packages obsolètes :
 
-L'objectif est de comprendre qu'un package peut apporter tout un sous-graphe de dépendances.
+```bash
+dotnet package list --outdated
+```
+
+### Question
+
+Pourquoi une application peut-elle charger beaucoup plus de packages qu'il n'y a de `PackageReference` visibles ?
+
+<details>
+<summary>Réponse</summary>
+
+Parce que chaque package direct peut lui-même dépendre d'autres packages. Le graphe final contient les dépendances directes et transitives.
+</details>
 
 ---
 
-## 9. Outils .NET : l'exemple `dotnet-ef`
+# 10. Package vs outil .NET
 
-Tous les outils utilisés dans un projet ne sont pas forcément des bibliothèques référencées par le code.
-
-EF Core utilise notamment un outil CLI pour les migrations :
+EF Core utilise un outil CLI :
 
 ```bash
 dotnet ef
 ```
 
-Selon l'organisation du projet, il peut être installé comme outil global ou local.
-
-Exemple d'installation globale :
+Installation globale possible :
 
 ```bash
 dotnet tool install --global dotnet-ef
 ```
 
-Puis :
+Vérification :
 
 ```bash
 dotnet ef --version
 ```
 
-### Package vs tool
+Distinction :
 
-- un **package NuGet référencé par le projet** fournit généralement du code utilisé par l'application ;
-- un **outil `dotnet`** fournit une commande utilisée pendant le développement ou le build.
+```text
+PackageReference
+→ bibliothèque utilisée par le projet
 
-Cette distinction deviendra concrète lors des migrations EF Core.
+dotnet tool
+→ commande utilisée pendant développement / build
+```
+
+Un outil peut aussi être installé localement au dépôt via un tool manifest ; une installation globale n'est donc pas la seule stratégie.
 
 ---
 
-## 10. Ne pas installer un package pour chaque problème
+# 11. Ne pas installer un package pour chaque problème
 
-Avant d'ajouter un package, demande-toi :
+Avant d'ajouter une dépendance :
 
-- le framework fournit-il déjà cette fonctionnalité ?
+- le framework fait-il déjà cela ?
 - le package est-il maintenu ?
-- quel est son coût en dépendances ?
-- est-ce raisonnable pour le problème à résoudre ?
-- est-ce qu'une dizaine de lignes simples suffiraient ?
+- quelles dépendances transitives apporte-t-il ?
+- quelle surface de sécurité et de maintenance ajoute-t-il ?
+- quelques lignes simples suffiraient-elles ?
 
-Un package ajoute du code tiers, des versions à maintenir et une surface de risque supplémentaire.
+Un package est du code tiers qu'il faudra mettre à jour et comprendre.
 
 ---
 
-## 11. Fichiers générés
-
-Tu rencontreras notamment :
+# 12. `bin/` et `obj/`
 
 ```text
 bin/
 obj/
 ```
 
-Ces dossiers contiennent des artefacts de compilation et données intermédiaires. Ils ne représentent généralement pas du code source à versionner.
+contiennent des artefacts de compilation et fichiers intermédiaires.
 
-Le `.gitignore` des projets .NET standards les exclut normalement.
+Ils ne représentent généralement pas du code source à versionner.
 
 ---
 
-## Exercice — explorer un `.csproj`
+## Exercice — autopsie d'un projet
 
-Dans un projet existant :
+Dans l'Order API :
 
 1. ouvre le `.csproj` ;
-2. identifie le `TargetFramework` ;
+2. explique `Sdk`, `TargetFramework`, `Nullable`, `ImplicitUsings` ;
 3. liste les `PackageReference` ;
 4. liste les `ProjectReference` ;
-5. vérifie si le dépôt contient un `global.json` ;
-6. lance `dotnet restore` puis `dotnet build` ;
-7. explique la différence entre ces deux commandes ;
-8. vérifie si `dotnet ef` est disponible.
+5. lance `dotnet package list --include-transitive` ;
+6. vérifie `dotnet --info` ;
+7. vérifie si un `global.json` existe ;
+8. exécute `dotnet restore`, `build`, `test` ;
+9. vérifie `dotnet ef --version`.
 
 ---
 
 ## Application au projet fil rouge
 
-Créer une solution contenant au minimum :
+À ce stade, la solution minimale peut rester :
 
 ```text
 OrderApi.slnx
@@ -382,16 +401,16 @@ OrderApi.slnx
 └── OrderApi.Tests
 ```
 
-Dans un premier temps, ne crée pas automatiquement quatre ou cinq couches. La séparation sera introduite lorsque le besoin architectural deviendra concret.
-
-Ajoute ensuite les packages et outils nécessaires au fur et à mesure du workbook, notamment ceux liés à EF Core et aux tests.
+Ne crée pas quatre couches uniquement parce que tu connais leur nom. Le chapitre architecture introduira ce découpage **après** avoir rencontré les problèmes qu'il peut résoudre.
 
 ### Checkpoint
 
-Tu dois savoir expliquer :
+Tu dois pouvoir expliquer :
 
-- différence entre SDK et runtime ;
-- rôle de `.csproj`, `.slnx`/`.sln` et `global.json` ;
-- différence entre `ProjectReference` et `PackageReference` ;
-- différence entre un package et un outil `dotnet` ;
-- pourquoi `dotnet build` peut fonctionner sans avoir lancé manuellement `dotnet restore` juste avant.
+- SDK vs runtime ;
+- `.csproj` vs `.slnx` ;
+- rôle de `global.json` ;
+- `ProjectReference` vs `PackageReference` ;
+- package vs `dotnet tool` ;
+- dépendance directe vs transitive ;
+- pourquoi `dotnet build` peut restaurer implicitement les dépendances.
