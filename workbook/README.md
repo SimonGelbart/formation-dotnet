@@ -4,6 +4,19 @@ Ce dossier contient la version **autoformation** de la formation .NET. Le lecteu
 
 L'objectif n'est pas d'apprendre la programmation depuis zéro, mais de comprendre les différences de modèle mental entre le front-end TypeScript et le développement backend en C#/.NET.
 
+## Référence technique
+
+Le workbook prend **.NET 10** comme environnement de référence. Certains concepts sont valables sur de nombreuses versions de .NET, mais les commandes et exemples de tooling sont écrits pour l'écosystème actuel :
+
+```text
+.NET 10
+ASP.NET Core
+Entity Framework Core
+xUnit
+```
+
+Le but n'est pas d'apprendre les nouveautés de C# ou .NET par cœur. La priorité reste les fondamentaux durables : système de types, POO, dépendances, LINQ, async, HTTP, persistance, tests et architecture.
+
 ## Mode d'emploi
 
 Chaque chapitre suit autant que possible la même structure :
@@ -18,6 +31,21 @@ Chaque chapitre suit autant que possible la même structure :
 8. application au projet fil rouge.
 
 Le lecteur est encouragé à **prédire le comportement du code avant de l'exécuter** et à réaliser les exercices dans un projet local.
+
+### Ne pas lire passivement
+
+Pour chaque exemple important :
+
+```text
+1. lire le code
+2. prédire le résultat
+3. l'exécuter
+4. expliquer le résultat avec ses propres mots
+5. modifier un élément
+6. observer la conséquence
+```
+
+Les chapitres contiennent volontairement certains exercices d'observation : lifetimes DI, exécution différée LINQ, SQL généré par EF Core, validation HTTP, etc.
 
 ## Parcours
 
@@ -52,7 +80,34 @@ Tests
 Architecture et refactoring
 ```
 
+Le projet conserve notamment une distinction importante entre :
+
+```text
+Product.Price
+→ prix courant du catalogue
+
+OrderItem.UnitPrice
+→ prix capturé au moment de la commande
+```
+
+Cette décision évite qu'un changement du catalogue modifie l'historique d'une ancienne commande.
+
 La cible de sortie est la suivante : être capable de lire, comprendre, modifier et construire proprement une API .NET classique utilisant ASP.NET Core, l'injection de dépendances, LINQ, EF Core et des tests.
+
+## Critère de réussite
+
+Le workbook n'est pas validé uniquement lorsque « le code compile ».
+
+Le lecteur doit être capable d'expliquer les décisions principales, par exemple :
+
+- pourquoi un objet protège ses invariants ;
+- pourquoi un service reçoit ses dépendances ;
+- pourquoi un lifetime DI change le comportement ;
+- quand LINQ exécute réellement une séquence ;
+- quelle partie d'une requête EF Core s'exécute en SQL ;
+- pourquoi une API utilise des DTOs ;
+- différence entre test unitaire et test d'intégration ;
+- pourquoi une couche ou un design pattern est présent.
 
 ## Hors périmètre initial
 
