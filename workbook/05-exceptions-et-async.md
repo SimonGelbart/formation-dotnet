@@ -13,7 +13,7 @@
 - utiliser `Task.WhenAll` pour des opérations indépendantes ;
 - comprendre `CancellationToken` ;
 - éviter les usages naïfs de `.Result`, `.Wait()`, `async void` et `Task.Run` ;
-- faire évoluer un contrat synchrone vers un contrat asynchrone de manière justifiée.
+- faire évoluer un contrat vers l'async uniquement là où cela a du sens.
 
 ---
 
@@ -245,7 +245,7 @@ utilise-la directement.
 
 ## 9. Faire évoluer le repository du chapitre 3
 
-Au chapitre 3, nous avons volontairement utilisé :
+Au chapitre 3, nous avons utilisé :
 
 ```csharp
 public interface IOrderRepository
@@ -255,9 +255,7 @@ public interface IOrderRepository
 }
 ```
 
-Cette forme est suffisante pour apprendre l'abstraction et la DI sans introduire l'async trop tôt.
-
-Une vraie persistance fera cependant de l'I/O. Faisons maintenant évoluer le contrat :
+Une vraie persistance fera de l'I/O pour lire et sauvegarder. Faisons évoluer seulement ces opérations :
 
 ```csharp
 public interface IOrderRepository
@@ -266,14 +264,32 @@ public interface IOrderRepository
         Guid id,
         CancellationToken cancellationToken);
 
-    Task AddAsync(
-        Order order,
-        CancellationToken cancellationToken);
+    void Add(Order order);
 
     Task SaveChangesAsync(
         CancellationToken cancellationToken);
 }
 ```
+
+### Pourquoi `Add` reste synchrone ?
+
+Avec EF Core :
+
+```csharp
+dbContext.Orders.Add(order);
+```
+
+ajoute l'entité au change tracker ; cela n'écrit pas encore dans la base.
+
+L'I/O arrive ici :
+
+```csharp
+await dbContext.SaveChangesAsync(cancellationToken);
+```
+
+C'est une bonne illustration d'une règle importante :
+
+> ne rends pas une méthode `async` uniquement parce que le reste du service l'est.
 
 ### Pourquoi `SaveChangesAsync` ?
 
@@ -289,32 +305,13 @@ Le workbook garde donc cette frontière explicite :
 
 ```text
 charger
-→ modifier le domaine
+→ modifier
 → sauvegarder
 ```
 
-Une implémentation mémoire peut simplement faire de `SaveChangesAsync` un no-op.
-
-### Pourquoi ce refactoring est intéressant ?
-
-Tu sais maintenant expliquer chaque élément :
-
-```text
-Task<Order?>
-→ résultat disponible maintenant ou plus tard
-
-Async suffix
-→ convention qui annonce une opération asynchrone
-
-CancellationToken
-→ possibilité coopérative d'abandonner l'opération
-```
-
-L'async n'est plus une syntaxe tombée du ciel : elle répond à la nature I/O du futur repository EF Core.
+Une implémentation mémoire peut faire de `SaveChangesAsync` un no-op.
 
 ### Implémentation mémoire
-
-Une implémentation mémoire n'effectue pas réellement d'I/O. Elle peut cependant respecter le même contrat :
 
 ```csharp
 public Task<Order?> GetByIdAsync(
@@ -325,6 +322,11 @@ public Task<Order?> GetByIdAsync(
     return Task.FromResult(order);
 }
 
+public void Add(Order order)
+{
+    _orders[order.Id] = order;
+}
+
 public Task SaveChangesAsync(
     CancellationToken cancellationToken)
 {
@@ -332,20 +334,13 @@ public Task SaveChangesAsync(
 }
 ```
 
-Ne rends pas artificiellement la méthode `async` s'il n'y a aucun `await` utile.
-
 ---
 
 ## 10. Pourquoi l'async est important en backend
 
-Une API attend souvent :
+Une API attend souvent une base de données, une autre API, un fichier ou le réseau.
 
-- une base de données ;
-- une autre API ;
-- un fichier ;
-- le réseau.
-
-Bloquer un thread pendant toute cette attente limite la capacité du serveur à traiter d'autres requêtes.
+Bloquer un thread pendant cette attente limite la capacité du serveur à traiter d'autres requêtes.
 
 L'async n'est donc pas principalement :
 
@@ -386,11 +381,6 @@ await Task.Delay(1000);
 
 Mesure :
 
-1. deux appels attendus séquentiellement ;
-2. deux tâches démarrées puis attendues avec `Task.WhenAll`.
-
-Tu devrais observer approximativement :
-
 ```text
 séquentiel  ≈ 2 s
 concurrent  ≈ 1 s
@@ -408,7 +398,7 @@ Non. `Task.Delay` représente une attente asynchrone ; il ne monopolise pas un t
 
 ### Attention à EF Core
 
-Ne lance pas deux opérations EF Core simultanées sur la **même instance de `DbContext`** : ce contexte n'est pas conçu pour des opérations concurrentes.
+Ne lance pas deux opérations EF Core simultanées sur la **même instance de `DbContext`**.
 
 ---
 
@@ -418,9 +408,6 @@ Ne lance pas deux opérations EF Core simultanées sur la **même instance de `D
 
 ```csharp
 var user = GetUserAsync(id).Result;
-```
-
-```csharp
 GetUserAsync(id).Wait();
 ```
 
@@ -453,11 +440,7 @@ L'usage principal légitime est celui des event handlers dont la signature impos
 
 ## 14. `CancellationToken`
 
-Une opération peut devenir inutile avant sa fin :
-
-- client HTTP déconnecté ;
-- action utilisateur annulée ;
-- application en arrêt.
+Une opération peut devenir inutile avant sa fin : client HTTP déconnecté, action annulée, application en arrêt.
 
 ```csharp
 public Task<Order?> GetByIdAsync(
@@ -468,7 +451,7 @@ public Task<Order?> GetByIdAsync(
 }
 ```
 
-L'annulation est coopérative : elle indique aux opérations qu'elles devraient s'arrêter si possible.
+L'annulation est coopérative.
 
 ### Mauvais réflexe
 
@@ -494,13 +477,12 @@ return await dbContext.Orders
 
 À ce stade :
 
-- fais évoluer `IOrderRepository` vers `Task` / `Task<T>` ;
-- ajoute une frontière explicite `SaveChangesAsync` ;
-- fais évoluer `OrderService` vers des méthodes `Async` lorsque ses dépendances sont asynchrones ;
-- après une modification métier persistante, appelle `SaveChangesAsync` ;
+- fais évoluer les **lectures I/O** vers `Task<T>` ;
+- garde `Add` synchrone s'il ne fait qu'ajouter au stockage local/change tracker ;
+- ajoute `SaveChangesAsync` pour la vraie sauvegarde ;
+- fais évoluer `OrderService` vers des méthodes `Async` lorsque ses dépendances font de l'I/O ;
 - propage un `CancellationToken` ;
-- garde les règles métier pures synchrones lorsqu'elles n'ont aucune I/O (`order.Confirm()`, calcul de total, etc.) ;
-- ne rends pas tout `async` mécaniquement.
+- garde les règles métier pures synchrones (`order.Confirm()`, calcul de total, etc.).
 
 ### Checkpoint final
 
@@ -509,7 +491,7 @@ Tu dois pouvoir expliquer :
 1. pourquoi `Task<Order>` n'est pas un `Order` ;
 2. pourquoi `async` n'est pas synonyme de parallélisme ou de nouveau thread ;
 3. différence I/O-bound / CPU-bound ;
-4. pourquoi le repository est devenu asynchrone alors que `Order.Confirm()` reste synchrone ;
+4. pourquoi `Add` peut rester synchrone alors que `SaveChangesAsync` est asynchrone ;
 5. pourquoi une modification EF doit être suivie d'un `SaveChangesAsync` ;
 6. quand `Task.WhenAll` est pertinent ;
 7. pourquoi deux opérations EF ne doivent pas partager un même `DbContext` simultanément ;
