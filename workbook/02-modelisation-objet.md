@@ -7,9 +7,12 @@
 - distinguer classe et instance ;
 - expliquer l'encapsulation ;
 - protéger les invariants d'un objet ;
+- exposer une collection sans donner un accès de modification arbitraire ;
 - comprendre héritage et polymorphisme ;
+- distinguer héritage, interface et composition ;
 - utiliser `virtual`, `override`, `abstract` et `sealed` ;
 - comprendre le rôle de `ToString()`, `Equals()` et `GetHashCode()` ;
+- comprendre le contrat entre égalité et hash code ;
 - savoir quand `static` est pertinent ou problématique.
 
 ---
@@ -62,14 +65,14 @@ Version plus protectrice :
 public class Order
 {
     public decimal Total { get; private set; }
-    public string Status { get; private set; } = "Draft";
+    public OrderStatus Status { get; private set; } = OrderStatus.Draft;
 
     public void Confirm()
     {
         if (Total <= 0)
             throw new InvalidOperationException("An empty order cannot be confirmed.");
 
-        Status = "Confirmed";
+        Status = OrderStatus.Confirmed;
     }
 }
 ```
@@ -82,7 +85,51 @@ C'est ce qu'on appelle protéger ses **invariants**.
 
 ---
 
-## 3. Héritage et polymorphisme
+## 3. Encapsuler aussi les collections
+
+Ceci expose une liste modifiable à tout le monde :
+
+```csharp
+public List<OrderItem> Items { get; } = [];
+```
+
+Du code extérieur peut alors faire :
+
+```csharp
+order.Items.Clear();
+order.Items.Add(invalidItem);
+```
+
+et contourner les règles prévues par `Order`.
+
+Une approche plus protectrice :
+
+```csharp
+public class Order
+{
+    private readonly List<OrderItem> _items = [];
+
+    public IReadOnlyCollection<OrderItem> Items => _items;
+
+    public void AddItem(OrderItem item)
+    {
+        if (Status != OrderStatus.Draft)
+            throw new InvalidOperationException("Confirmed orders cannot be modified.");
+
+        _items.Add(item);
+    }
+}
+```
+
+Le consommateur peut lire les items, mais doit passer par les comportements du domaine pour modifier la commande.
+
+### Nuance
+
+`IReadOnlyCollection<T>` empêche surtout la modification de **la collection via ce contrat**. Il ne rend pas automatiquement les objets contenus immuables.
+
+---
+
+## 4. Héritage et polymorphisme
 
 Supposons plusieurs types de notification :
 
@@ -92,7 +139,7 @@ NotificationSender
 └── SmsSender
 ```
 
-On peut représenter le concept commun avec une classe abstraite :
+On pourrait représenter le concept commun avec une classe abstraite :
 
 ```csharp
 public abstract class NotificationSender
@@ -114,7 +161,7 @@ public class EmailSender : NotificationSender
 }
 ```
 
-Le point important est le suivant :
+Le point important est :
 
 ```csharp
 NotificationSender sender = new EmailSender();
@@ -124,9 +171,59 @@ La variable est typée avec l'abstraction, mais l'objet concret est un `EmailSen
 
 C'est une forme essentielle de **polymorphisme**.
 
+### Mais fallait-il vraiment une classe abstraite ?
+
+Dans cet exemple, si les implémentations ne partagent ni état ni comportement, une interface est probablement plus simple :
+
+```csharp
+public interface INotificationSender
+{
+    Task SendAsync(string message);
+}
+```
+
+Ce contraste est important : ne choisis pas l'héritage uniquement parce que plusieurs classes « se ressemblent ».
+
 ---
 
-## 4. `virtual`, `override`, `abstract`, `sealed`
+## 5. Héritage ou composition ?
+
+L'héritage exprime une relation forte :
+
+> `Dog` est un `Animal`.
+
+La composition exprime :
+
+> `OrderService` utilise un `IOrderRepository`.
+
+Exemple :
+
+```csharp
+public class OrderService
+{
+    private readonly IOrderRepository _repository;
+
+    public OrderService(IOrderRepository repository)
+    {
+        _repository = repository;
+    }
+}
+```
+
+`OrderService` n'est pas un repository. Il **collabore avec** un repository.
+
+### Règle de réflexion
+
+Avant d'hériter, demande-toi :
+
+1. existe-t-il réellement une relation « est un » ?
+2. la classe dérivée peut-elle être utilisée partout où la classe de base est attendue ?
+3. ai-je besoin d'état/comportement commun, ou seulement d'un contrat ?
+4. une composition rendrait-elle la relation plus claire et plus flexible ?
+
+---
+
+## 6. `virtual`, `override`, `abstract`, `sealed`
 
 ### `virtual`
 
@@ -152,23 +249,32 @@ public override decimal CalculatePrice()
 
 ### `abstract`
 
-La classe ou la méthode ne fournit pas une implémentation complète et impose aux classes dérivées de le faire.
+Une classe abstraite ne peut pas être instanciée directement. Une méthode abstraite impose aux classes concrètes dérivées de fournir une implémentation.
 
 ### `sealed`
 
-Empêche l'héritage d'une classe ou certaines redéfinitions supplémentaires.
+Sur une classe : empêche toute nouvelle dérivation.
 
-### Question à se poser
+```csharp
+public sealed class EmailSender
+{
+}
+```
 
-Avant d'utiliser l'héritage :
+On peut également sceller une redéfinition :
 
-> Est-ce réellement une relation « est un » ?
+```csharp
+public sealed override decimal CalculatePrice()
+{
+    return 20m;
+}
+```
 
-Un `EmailSender` **est un** `NotificationSender`. En revanche, un `OrderService` n'**est pas un** `OrderRepository`.
+Les classes encore plus dérivées ne pourront alors plus remplacer cette méthode.
 
 ---
 
-## 5. `ToString()`, `Equals()` et `GetHashCode()`
+## 7. `ToString()`, `Equals()` et `GetHashCode()`
 
 Toutes les classes C# héritent indirectement de `object`.
 
@@ -195,15 +301,40 @@ public class Product
 
 `override` est possible parce que `object.ToString()` est virtuelle.
 
-### `Equals()` et `GetHashCode()`
+### Égalité des classes
 
-Ils deviennent particulièrement importants lorsqu'on compare des objets ou qu'on les utilise dans des collections comme `HashSet<T>` ou comme clés de dictionnaire.
+Deux classes distinctes ayant les mêmes données ne sont pas automatiquement considérées comme égales par valeur :
 
-Il n'est pas nécessaire de réimplémenter ces méthodes systématiquement. Il faut surtout comprendre qu'une classe classique est, par défaut, très liée à l'identité de l'instance, alors qu'un `record` fournit une sémantique de valeur plus naturelle.
+```csharp
+var a = new Product { Name = "Keyboard", Price = 100m };
+var b = new Product { Name = "Keyboard", Price = 100m };
+
+Console.WriteLine(a.Equals(b)); // généralement false sans sémantique personnalisée
+```
+
+Un `record` fournit au contraire par défaut une sémantique de valeur plus naturelle pour ses composants.
+
+### Contrat `Equals` / `GetHashCode`
+
+Si deux objets sont considérés comme égaux par `Equals`, ils doivent produire le même hash code :
+
+```text
+Equals(a, b) == true
+        ↓
+a.GetHashCode() == b.GetHashCode()
+```
+
+L'inverse n'est pas garanti : deux objets différents peuvent avoir le même hash code.
+
+Pourquoi est-ce important ? Parce que `Dictionary<TKey,TValue>` et `HashSet<T>` utilisent le hash code puis l'égalité pour organiser et retrouver leurs éléments.
+
+### Règle pratique
+
+Ne surcharge pas `Equals` et `GetHashCode` au hasard. Si ton objet a une vraie sémantique de valeur, utilise éventuellement un `record` ou implémente les deux de manière cohérente.
 
 ---
 
-## 6. `static` vs instance
+## 8. `static` vs instance
 
 Méthode d'instance :
 
@@ -248,6 +379,8 @@ Cela introduit un état global partagé, ce qui peut compliquer :
 - la compréhension du cycle de vie ;
 - le remplacement de l'implémentation.
 
+`static` n'est donc pas mauvais en soi ; **l'état global mutable** mérite surtout d'être traité avec prudence.
+
 ---
 
 ## Exercice — protéger un compte bancaire
@@ -276,14 +409,29 @@ Le setter de `Balance` ne doit pas être public. Les règles doivent être centr
 
 ---
 
+## Exercice — héritage ou composition ?
+
+Pour chaque relation, choisis d'abord entre héritage, interface ou composition et justifie :
+
+1. `EmailSender` / « peut envoyer une notification » ;
+2. `OrderService` / `OrderRepository` ;
+3. `Circle` / `Shape` si toutes les formes partagent un contrat de calcul d'aire ;
+4. `Car` / `Engine`.
+
+L'objectif n'est pas d'obtenir une réponse unique à tout prix, mais de savoir **exprimer la nature de la relation**.
+
+---
+
 ## Application au projet fil rouge
 
 Faire évoluer `Order` pour qu'une commande :
 
-- possède une collection d'items ;
-- refuse une quantité <= 0 ;
+- possède une collection privée d'items ;
+- expose cette collection en lecture seule ;
+- refuse une quantité <= 0 via la création de l'item ;
 - calcule son total à partir de ses items ;
 - ne laisse pas un consommateur écrire directement un total arbitraire ;
-- puisse être confirmée uniquement si elle contient au moins un item.
+- puisse être confirmée uniquement si elle contient au moins un item ;
+- utilise `OrderStatus` plutôt qu'une chaîne libre.
 
-Le but est de commencer à traiter `Order` comme un objet métier et non comme un simple sac de propriétés.
+Le but est de traiter `Order` comme un objet métier et non comme un simple sac de propriétés.
