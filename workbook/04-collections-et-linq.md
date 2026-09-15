@@ -5,28 +5,29 @@
 À la fin de ce chapitre, tu dois savoir :
 
 - comprendre à quoi servent les génériques ;
-- choisir une collection adaptée au besoin ;
-- raisonner simplement en termes de complexité `O(1)`, `O(n)`, `O(n²)` ;
+- choisir une collection adaptée ;
+- raisonner en `O(1)`, `O(n)`, `O(n²)` ;
+- relier `HashSet<T>` / `Dictionary<TKey,TValue>` à `Equals` / `GetHashCode` ;
 - lire et écrire des lambdas ;
 - comprendre `Func<T>` et `Action<T>` ;
 - utiliser les principaux opérateurs LINQ ;
-- comprendre quels opérateurs sont différés et lesquels déclenchent une énumération ;
-- distinguer une séquence `IEnumerable<T>` d'une collection matérialisée ;
-- comprendre l'intérêt de `IReadOnlyCollection<T>` ;
-- comprendre le principe des méthodes d'extension.
+- distinguer opérateurs différés et opérations qui déclenchent une énumération ;
+- comprendre `IEnumerable<T>` ;
+- comprendre `IReadOnlyCollection<T>` ;
+- comprendre les méthodes d'extension.
 
 ---
 
-## 1. Génériques
+# 1. Génériques
 
-En TypeScript, tu connais déjà ce principe :
+TypeScript :
 
 ```ts
 Array<User>
 Promise<User>
 ```
 
-En C# :
+C# :
 
 ```csharp
 List<User>
@@ -34,9 +35,7 @@ Task<User>
 Dictionary<Guid, User>
 ```
 
-Le paramètre générique permet de réutiliser une structure sans perdre l'information de type.
-
-Exemple :
+Exemple générique :
 
 ```csharp
 public class Result<T>
@@ -46,49 +45,45 @@ public class Result<T>
 }
 ```
 
-On peut alors écrire :
-
 ```csharp
 Result<User>
 Result<Order>
 Result<Product>
 ```
 
-### Pourquoi ne pas utiliser `object` ?
-
-Avec `T`, le compilateur conserve le vrai type. On évite les casts et on obtient une API plus claire.
+Avec `T`, le compilateur conserve l'information de type : moins de casts, contrats plus précis.
 
 ---
 
-## 2. Les collections courantes
+# 2. Collections courantes
 
-### `Array`
+## `Array`
 
-Taille fixe après création.
+Taille fixe après création :
 
 ```csharp
-var values = new int[] { 1, 2, 3 };
+var values = new[] { 1, 2, 3 };
 ```
 
-### `List<T>`
+## `List<T>`
 
-Collection ordonnée dynamique.
+Collection ordonnée dynamique :
 
 ```csharp
 var users = new List<User>();
 users.Add(user);
 ```
 
-### `Dictionary<TKey, TValue>`
+## `Dictionary<TKey,TValue>`
 
-Associe une clé à une valeur.
+Association clé → valeur :
 
 ```csharp
 var usersById = new Dictionary<Guid, User>();
 usersById[user.Id] = user;
 ```
 
-Si l'absence d'une clé est un cas normal, préfère souvent :
+Si l'absence est normale :
 
 ```csharp
 if (usersById.TryGetValue(id, out var user))
@@ -97,41 +92,38 @@ if (usersById.TryGetValue(id, out var user))
 }
 ```
 
-à :
+L'indexeur :
 
 ```csharp
 var user = usersById[id];
 ```
 
-car l'indexeur lève une exception si la clé n'existe pas.
+lève une exception si la clé n'existe pas.
 
-### `HashSet<T>`
+## `HashSet<T>`
 
-Ensemble de valeurs uniques. Très utile lorsqu'on veut tester rapidement l'appartenance à un ensemble.
+Ensemble de valeurs uniques, utile pour tester rapidement l'appartenance.
 
-### `Queue<T>`
+## `Queue<T>` / `Stack<T>`
 
-Premier entré, premier sorti.
+```text
+Queue → FIFO
+Stack → LIFO
+```
 
-### `Stack<T>`
+## `IReadOnlyCollection<T>`
 
-Dernier entré, premier sorti.
-
-### `IReadOnlyCollection<T>`
-
-Exprime qu'un consommateur peut parcourir les éléments et connaître leur nombre sans recevoir une API de modification de la collection.
+Exprime qu'un consommateur peut parcourir les éléments et lire leur nombre sans recevoir directement une API de modification de collection.
 
 ```csharp
 public IReadOnlyCollection<OrderItem> Items => _items;
 ```
 
-Cela ne garantit pas à lui seul une immutabilité profonde des objets contenus, mais réduit les possibilités de modifier directement la structure de la collection.
+Cela ne rend pas les objets contenus profondément immuables.
 
 ---
 
-## 3. Complexité : choisir selon l'usage
-
-Quelques ordres de grandeur utiles :
+# 3. Complexité : choisir selon l'usage
 
 | Opération | `List<T>` | `Dictionary<TKey,TValue>` | `HashSet<T>` |
 |---|---:|---:|---:|
@@ -141,60 +133,103 @@ Quelques ordres de grandeur utiles :
 | Ajout | O(1) amorti | O(1) moyen | O(1) moyen |
 | Suppression par valeur | O(n) | — | O(1) moyen |
 
-Ces valeurs sont des modèles utiles, pas des garanties absolues de temps réel.
+Ces valeurs décrivent des ordres de grandeur, pas une durée garantie.
 
-Supposons 100 000 utilisateurs et une recherche répétée par ID.
-
-Avec une liste :
+### Exemple
 
 ```csharp
 var user = users.FirstOrDefault(x => x.Id == id);
 ```
 
-Dans le pire cas, on inspecte chaque élément : environ `O(n)`.
-
-Avec un dictionnaire :
+→ recherche linéaire, environ `O(n)` dans le pire cas.
 
 ```csharp
 usersById.TryGetValue(id, out var user);
 ```
 
-La recherche par clé est en moyenne proche de `O(1)`.
+→ `O(1)` moyen.
 
-### Intuition
+### Attention
 
-```text
-O(1)   : le coût reste globalement stable
-O(n)   : le travail augmente avec le nombre d'éléments
-O(n²)  : le travail peut exploser avec deux parcours imbriqués dépendants de n
+Deux boucles imbriquées ne signifient pas automatiquement `O(n²)` : cela dépend du nombre d'éléments réellement parcourus par chacune.
+
+---
+
+# 4. Pourquoi `HashSet<T>` réactive `Equals` et `GetHashCode`
+
+Considère une classe sans égalité personnalisée :
+
+```csharp
+public class ProductCode
+{
+    public required string Value { get; init; }
+}
 ```
 
-Attention : **deux boucles imbriquées ne signifient pas automatiquement O(n²)**. Cela dépend de la taille réellement parcourue par chaque boucle.
+Puis :
 
-### Exercice
+```csharp
+var codes = new HashSet<ProductCode>();
 
-Tu dois vérifier pour chaque commande si son `CustomerId` existe dans une liste de 50 000 clients.
+codes.Add(new ProductCode { Value = "ABC" });
+codes.Add(new ProductCode { Value = "ABC" });
 
-Version A :
+Console.WriteLine(codes.Count);
+```
+
+Avant d'exécuter, prédis le résultat.
+
+Avec une classe classique, les deux instances sont généralement distinctes selon l'égalité par défaut.
+
+Compare avec :
+
+```csharp
+public record ProductCode(string Value);
+```
+
+Le `record` possède une sémantique de valeur qui rend le résultat différent.
+
+### Pourquoi ?
+
+Les collections basées sur le hachage utilisent :
+
+```text
+GetHashCode
+    ↓
+trouver une zone candidate
+    ↓
+Equals
+    ↓
+confirmer l'égalité
+```
+
+Le chapitre 2 sur `Equals` / `GetHashCode` devient donc concret ici.
+
+---
+
+# 5. Exercice complexité
+
+Pour chaque commande, retrouver son client dans 50 000 clients :
 
 ```csharp
 foreach (var order in orders)
 {
-    var customer = customers.FirstOrDefault(c => c.Id == order.CustomerId);
+    var customer = customers.FirstOrDefault(
+        c => c.Id == order.CustomerId);
 }
 ```
 
-Comment améliorer la structure de données si cette recherche est fréquente ?
+Comment améliorer le cas si la recherche est fréquente ?
 
 <details>
 <summary>Correction</summary>
 
-Construire par exemple un `Dictionary<Guid, Customer>` indexé par ID pour éviter de rescanner toute la liste pour chaque commande.
+Construire une fois un `Dictionary<Guid, Customer>` indexé par ID puis effectuer les recherches avec `TryGetValue`.
 </details>
 
 ---
 
-## 4. Lambdas
+# 6. Lambdas
 
 JavaScript :
 
@@ -214,37 +249,35 @@ La partie :
 user => user.Age >= 18
 ```
 
-est une lambda : une fonction anonyme.
+est une fonction anonyme : une lambda.
 
 ---
 
-## 5. `Func` et `Action`
-
-Une lambda peut être stockée dans un delegate.
+# 7. `Func` et `Action`
 
 ```csharp
-Func<User, bool> isAdult = user => user.Age >= 18;
+Func<User, bool> isAdult =
+    user => user.Age >= 18;
 ```
 
-`Func<User, bool>` signifie :
-
-> fonction qui reçoit un `User` et retourne un `bool`.
-
-`Action<T>` représente une fonction qui ne retourne pas de valeur :
+Signifie : fonction recevant `User` et retournant `bool`.
 
 ```csharp
-Action<User> printUser = user => Console.WriteLine(user.Name);
+Action<User> printUser =
+    user => Console.WriteLine(user.Name);
 ```
 
-### Pourquoi c'est important ?
+`Action<T>` ne retourne pas de valeur.
 
-LINQ accepte justement des fonctions comme paramètres.
+LINQ reçoit justement des fonctions comme paramètres.
 
 ---
 
-## 6. `IEnumerable<T>`
+# 8. `IEnumerable<T>`
 
-`IEnumerable<T>` représente avant tout une séquence que l'on peut énumérer.
+`IEnumerable<T>` exprime avant tout :
+
+> cette séquence peut être énumérée.
 
 ```csharp
 IEnumerable<User> users = ...;
@@ -252,99 +285,80 @@ IEnumerable<User> users = ...;
 
 Cela ne garantit ni :
 
-- que la source soit une `List<User>` ;
-- que tous les éléments soient déjà calculés ;
-- que les données soient nécessairement stockées en mémoire sous cette forme.
+- une `List<User>` ;
+- des éléments déjà calculés ;
+- une matérialisation préalable.
 
-Une API peut retourner `IEnumerable<User>` lorsqu'elle veut surtout exprimer :
-
-> « voici une séquence d'utilisateurs que tu peux parcourir ».
-
-Une `List<T>` est donc un objet concret avec des capacités supplémentaires (`Count`, indexation, modification...), tandis que `IEnumerable<T>` est un contrat beaucoup plus minimal.
+`List<T>` est un type concret riche. `IEnumerable<T>` est un contrat minimal d'énumération.
 
 ---
 
-## 7. Les opérateurs LINQ essentiels
+# 9. LINQ essentiel
 
-### `Where`
-
-Filtrer :
+## Filtrer
 
 ```csharp
-var activeUsers = users.Where(x => x.IsActive);
+users.Where(x => x.IsActive)
 ```
 
-### `Select`
-
-Transformer :
+## Transformer
 
 ```csharp
-var names = users.Select(x => x.Name);
+users.Select(x => x.Name)
 ```
 
-### `Any` / `All`
+## Tester
 
 ```csharp
-var hasAdmin = users.Any(x => x.IsAdmin);
-var allActive = users.All(x => x.IsActive);
+users.Any(x => x.IsAdmin)
+users.All(x => x.IsActive)
 ```
 
-### `First` / `FirstOrDefault`
+## Premier élément
 
 ```csharp
-var user = users.FirstOrDefault(x => x.Id == id);
+users.FirstOrDefault(x => x.Id == id)
 ```
 
-`First` lève une exception si aucun élément n'est trouvé. `FirstOrDefault` retourne la valeur par défaut, généralement `null` pour un type référence nullable dans ce contexte.
+`First` échoue si aucun élément n'existe. `FirstOrDefault` retourne la valeur par défaut.
 
-### `Single` / `SingleOrDefault`
-
-Exprime qu'il ne doit y avoir **au maximum qu'un élément correspondant**. Une seconde correspondance provoque une exception. `Single` provoque également une exception si aucun élément n'existe.
-
-Utilise-le quand l'unicité fait partie du contrat, pas simplement comme variante de `First`.
-
-### `OrderBy`
+## Unicité
 
 ```csharp
-var sorted = users.OrderBy(x => x.Name);
+users.SingleOrDefault(x => x.Email == email)
 ```
 
-### `GroupBy`
+`Single` / `SingleOrDefault` échouent s'il existe plusieurs correspondances. Utilise-les lorsque l'unicité fait partie du contrat.
+
+## Trier / grouper
 
 ```csharp
-var byCountry = users.GroupBy(x => x.Country);
+users.OrderBy(x => x.Name)
+users.GroupBy(x => x.Country)
 ```
 
-### `Count`, `Sum`
+## Agréger
 
 ```csharp
-var count = users.Count();
-var total = orders.Sum(x => x.Total);
+orders.Count()
+orders.Sum(x => x.Total)
 ```
 
-### `SelectMany`
-
-Permet d'aplatir plusieurs séquences imbriquées :
+## Aplatir
 
 ```csharp
-var allItems = orders.SelectMany(x => x.Items);
+orders.SelectMany(x => x.Items)
 ```
 
-### `ToDictionary`
+## Construire un index
 
 ```csharp
 var byId = users.ToDictionary(x => x.Id);
 ```
 
-Pratique pour construire un index de recherche en mémoire.
-
-### `ToList`
-
-Matérialise la séquence dans une liste.
-
 ---
 
-## 8. Lire une chaîne LINQ
+# 10. Lire une pipeline LINQ
 
 ```csharp
 var names = users
@@ -354,19 +368,19 @@ var names = users
     .ToList();
 ```
 
-Lis-la comme une pipeline :
+Lis-la :
 
 ```text
 users
- ↓ garder les actifs
- ↓ trier par nom
- ↓ ne garder que le nom
- ↓ matérialiser dans une List<string>
+ ↓ garder actifs
+ ↓ trier
+ ↓ transformer en nom
+ ↓ matérialiser
 ```
 
 ### Exercice
 
-Avant d'exécuter ce code, décris chaque transformation en français :
+Décris chaque étape avant d'exécuter :
 
 ```csharp
 var result = orders
@@ -379,13 +393,9 @@ var result = orders
 
 ---
 
-## 9. Exécution différée et exécution immédiate
+# 11. Exécution différée
 
-Tous les opérateurs LINQ ne se comportent pas de la même manière.
-
-### Opérateurs souvent différés
-
-Par exemple :
+Opérateurs généralement différés :
 
 ```text
 Where
@@ -394,10 +404,6 @@ OrderBy
 Take
 Skip
 ```
-
-Ils peuvent construire une séquence qui sera réellement parcourue plus tard.
-
-Considère :
 
 ```csharp
 var adults = users.Where(x => x.Age >= 18);
@@ -410,11 +416,9 @@ foreach (var adult in adults)
 }
 ```
 
-`Where` n'a pas produit une copie figée au moment de l'appel. La source est énumérée lorsque le `foreach` commence ; Bob peut donc apparaître.
+Bob peut apparaître car la source est énumérée plus tard.
 
-### Opérations qui déclenchent l'énumération
-
-Par exemple :
+Opérations qui déclenchent une énumération :
 
 ```text
 ToList
@@ -426,17 +430,15 @@ Any
 Sum
 ```
 
-Elles ont besoin de parcourir tout ou partie de la séquence pour produire leur résultat.
-
-Avec :
-
 ```csharp
-var adults = users.Where(x => x.Age >= 18).ToList();
+var adults = users
+    .Where(x => x.Age >= 18)
+    .ToList();
 ```
 
-la liste obtenue est matérialisée immédiatement.
+matérialise immédiatement le résultat.
 
-### Piège : énumérer plusieurs fois
+### Ré-énumération
 
 ```csharp
 var query = ExpensiveSequence();
@@ -448,25 +450,19 @@ foreach (var item in query)
 }
 ```
 
-Selon la source, le calcul peut être exécuté deux fois. Une séquence différée n'est pas automatiquement un cache.
-
-### À retenir
-
-> Une expression LINQ peut représenter un calcul à exécuter plus tard, pas nécessairement un résultat déjà calculé.
+Selon la source, le travail peut être exécuté deux fois. Une séquence différée n'est pas un cache.
 
 ---
 
-## 10. Méthodes d'extension
-
-Lorsque tu écris :
+# 12. Méthodes d'extension
 
 ```csharp
 users.Where(...)
 ```
 
-`Where` n'est pas nécessairement une méthode définie directement dans le type concret de `users`.
+`Where` n'est pas une méthode ajoutée réellement dans `List<T>`.
 
-On peut créer ses propres méthodes d'extension :
+Exemple :
 
 ```csharp
 public static class OrderEnumerableExtensions
@@ -474,53 +470,41 @@ public static class OrderEnumerableExtensions
     public static IEnumerable<Order> Confirmed(
         this IEnumerable<Order> orders)
     {
-        return orders.Where(x => x.Status == OrderStatus.Confirmed);
+        return orders.Where(
+            x => x.Status == OrderStatus.Confirmed);
     }
 }
 ```
-
-Puis :
 
 ```csharp
 var confirmed = orders.Confirmed();
 ```
 
-Une méthode d'extension est une méthode statique que la syntaxe permet d'appeler comme si elle appartenait au type étendu. Elle n'ajoute pas réellement une nouvelle méthode d'instance au type original.
+Une méthode d'extension reste fondamentalement une méthode statique avec une syntaxe d'appel plus naturelle.
 
 ---
 
 ## Application au projet fil rouge
 
-Ajouter des opérations permettant :
+Utilise LINQ pour :
 
-- de lister uniquement les commandes confirmées ;
-- de calculer le total des commandes ;
-- de récupérer les cinq commandes les plus chères ;
-- de grouper les commandes par client ;
-- de rechercher efficacement une commande par ID dans l'implémentation mémoire.
+- lister les commandes confirmées ;
+- grouper par client ;
+- calculer des agrégats ;
+- construire un dictionnaire pour le repository mémoire ;
+- récupérer des résumés.
 
-Pour le repository mémoire, comparer :
-
-```csharp
-List<Order>
-```
-
-et :
-
-```csharp
-Dictionary<Guid, Order>
-```
-
-puis justifier le choix selon les opérations dominantes.
+La différence entre LINQ sur objets et LINQ traduit par EF Core sera approfondie au chapitre 8.
 
 ### Checkpoint
 
-Tu dois pouvoir expliquer sans regarder le chapitre :
+Tu dois pouvoir expliquer :
 
-1. différence entre `List<T>` et `Dictionary<TKey,TValue>` ;
-2. pourquoi `TryGetValue` est souvent préférable à l'indexeur si l'absence est normale ;
-3. différence entre `Where` et `Select` ;
-4. différence entre `FirstOrDefault` et `SingleOrDefault` ;
-5. pourquoi `ToList()` change le moment d'exécution d'une requête LINQ ;
-6. pourquoi `IEnumerable<T>` ne signifie pas simplement « liste déjà en mémoire » ;
-7. pourquoi une séquence différée énumérée deux fois peut refaire le travail deux fois.
+1. `List<T>` vs `Dictionary<TKey,TValue>` ;
+2. `TryGetValue` vs indexeur ;
+3. lien `HashSet<T>` ↔ `Equals` / `GetHashCode` ;
+4. `Where` vs `Select` ;
+5. `FirstOrDefault` vs `SingleOrDefault` ;
+6. ce que change `ToList()` ;
+7. pourquoi `IEnumerable<T>` ne signifie pas « liste en mémoire » ;
+8. pourquoi une séquence différée peut refaire le travail si elle est énumérée deux fois.
