@@ -2,9 +2,9 @@
 
 ## Objectif
 
-Ce projet consolide le workbook dans une seule application qui évolue progressivement.
+Ce chapitre assemble le workbook dans une seule application.
 
-Le but n'est pas de construire une architecture parfaite dès le départ. On commence simple, puis on introduit les abstractions lorsqu'un problème concret apparaît.
+Il ne répète pas tous les chapitres : il sert de **guide d'implémentation** et de checklist.
 
 À la fin, l'application doit permettre :
 
@@ -13,20 +13,15 @@ consulter un catalogue produit
 créer une commande
 ajouter des items
 capturer le prix au moment de la commande
-calculer le total
 confirmer une commande
 exposer ces opérations en HTTP
 persister avec EF Core
-interroger efficacement les données
-tester domaine, application, API et persistence
-refactorer l'architecture si le besoin apparaît
+tester domaine, service, API et persistence
 ```
 
 ---
 
 # Étape 0 — Préparer la solution
-
-Avec .NET 10 :
 
 ```bash
 dotnet new sln -n OrderApi
@@ -39,14 +34,13 @@ dotnet sln add OrderApi.Tests/OrderApi.Tests.csproj
 dotnet add OrderApi.Tests reference OrderApi
 ```
 
-`dotnet new sln` crée par défaut `OrderApi.slnx` avec .NET 10.
+Avec .NET 10, `dotnet new sln` crée par défaut `OrderApi.slnx`.
 
 Checkpoint :
 
 ```text
-dotnet --info fonctionne
-dotnet build fonctionne
-dotnet test fonctionne
+dotnet build
+dotnet test
 ```
 
 ---
@@ -74,19 +68,16 @@ public enum OrderStatus
 
 ## `Product`
 
-Le prix représente **le prix actuel du catalogue**.
+Le prix représente le **prix actuel du catalogue**.
 
 ```csharp
 public sealed class Product
 {
     public Guid Id { get; private set; }
-    public string Name { get; private set; }
+    public string Name { get; private set; } = string.Empty;
     public decimal Price { get; private set; }
 
-    private Product()
-    {
-        Name = string.Empty;
-    }
+    private Product() { }
 
     public Product(Guid id, string name, decimal price)
     {
@@ -105,9 +96,9 @@ public sealed class Product
 }
 ```
 
-## `OrderItem` : snapshot du prix
+## `OrderItem`
 
-Une commande historique ne doit pas changer lorsque le catalogue change.
+La ligne capture le prix historique.
 
 ```csharp
 public sealed class OrderItem
@@ -121,16 +112,18 @@ public sealed class OrderItem
 
     public decimal Subtotal => UnitPrice * Quantity;
 
-    private OrderItem()
-    {
-    }
+    private OrderItem() { }
 
-    public OrderItem(
+    internal OrderItem(
+        Guid orderId,
         Guid productId,
         string productName,
         decimal unitPrice,
         int quantity)
     {
+        if (string.IsNullOrWhiteSpace(productName))
+            throw new ArgumentException(nameof(productName));
+
         if (unitPrice < 0)
             throw new ArgumentOutOfRangeException(nameof(unitPrice));
 
@@ -138,6 +131,7 @@ public sealed class OrderItem
             throw new ArgumentOutOfRangeException(nameof(quantity));
 
         Id = Guid.NewGuid();
+        OrderId = orderId;
         ProductId = productId;
         ProductName = productName;
         UnitPrice = unitPrice;
@@ -161,9 +155,7 @@ public sealed class Order
 
     public decimal Total => _items.Sum(x => x.Subtotal);
 
-    private Order()
-    {
-    }
+    private Order() { }
 
     public Order(Guid customerId)
     {
@@ -173,13 +165,22 @@ public sealed class Order
         CreatedAt = DateTimeOffset.UtcNow;
     }
 
-    public void AddItem(OrderItem item)
+    public void AddItem(
+        Guid productId,
+        string productName,
+        decimal unitPrice,
+        int quantity)
     {
         if (Status != OrderStatus.Draft)
             throw new InvalidOperationException(
                 "A confirmed order cannot be modified.");
 
-        _items.Add(item);
+        _items.Add(new OrderItem(
+            Id,
+            productId,
+            productName,
+            unitPrice,
+            quantity));
     }
 
     public void Confirm()
@@ -193,28 +194,21 @@ public sealed class Order
 }
 ```
 
-### Tests à écrire immédiatement
+Tests à écrire immédiatement :
 
-- produit avec prix négatif refusé ;
 - quantité <= 0 refusée ;
-- sous-total correct ;
+- prix négatif refusé ;
+- `OrderItem.OrderId == Order.Id` ;
 - total correct ;
 - commande vide non confirmable ;
 - commande confirmée non modifiable ;
-- `CreatedAt` est renseigné ;
-- le prix d'un item reste stable même si le catalogue change ensuite.
-
-<details>
-<summary>Pourquoi ajouter les tests maintenant ?</summary>
-
-Ces règles sont purement métier et ne nécessitent ni ASP.NET Core ni EF Core. C'est le moment le plus simple pour les documenter avec des tests.
-</details>
+- prix historique stable.
 
 ---
 
-# Étape 2 — Introduire les abstractions sans async
+# Étape 2 — Introduire les abstractions en synchrone
 
-Pour rester cohérent avec le chapitre 3, commence par des contrats synchrones :
+Avant le chapitre async, commence simple :
 
 ```csharp
 public interface IOrderRepository
@@ -240,17 +234,17 @@ InMemoryOrderRepository
 InMemoryProductCatalog
 ```
 
-Pour une recherche fréquente par ID :
+Une recherche fréquente par ID justifie naturellement un :
 
 ```csharp
 Dictionary<Guid, Order>
 ```
 
-est plus naturel qu'un scan répété d'une `List<Order>`.
-
 ---
 
 # Étape 3 — Construire `OrderService`
+
+Le service orchestre les collaborateurs ; il ne recrée pas lui-même les repositories.
 
 ```csharp
 public sealed class OrderService
@@ -268,47 +262,25 @@ public sealed class OrderService
 }
 ```
 
-Opérations à implémenter :
-
-```text
-CreateOrder
-AddItem
-GetById
-GetAll
-Confirm
-```
-
 Pour ajouter un item :
 
 ```text
 ProductId
   ↓
-IProductCatalog
-  ↓
-Product courant
+chercher Product
   ↓
 capturer Name + Price
-  ↓
-new OrderItem(...)
   ↓
 order.AddItem(...)
 ```
 
-### Exercice
-
-Implémente `AddItem` sans passer l'objet `Product` directement dans `OrderItem`.
-
-<details>
-<summary>Indice</summary>
-
-Le service possède le catalogue. Il peut obtenir le produit puis transmettre au domaine les données historiques à capturer : `ProductId`, `Name`, `Price`.
-</details>
+La commande, et non le service, crée réellement `OrderItem`.
 
 ---
 
-# Étape 4 — Faire évoluer le projet vers async
+# Étape 4 — Passer aux frontières async
 
-Après le chapitre 5, transforme les frontières I/O :
+Après le chapitre 5 :
 
 ```csharp
 public interface IOrderRepository
@@ -323,33 +295,43 @@ public interface IOrderRepository
 
     Task<IReadOnlyCollection<Order>> GetAllAsync(
         CancellationToken cancellationToken);
-}
-```
 
-```csharp
-public interface IProductCatalog
-{
-    Task<Product?> GetByIdAsync(
-        Guid id,
-        CancellationToken cancellationToken);
-
-    Task<IReadOnlyCollection<Product>> GetAllAsync(
+    Task SaveChangesAsync(
         CancellationToken cancellationToken);
 }
 ```
 
-Fais évoluer les méthodes du service en conséquence.
+Le catalogue devient également asynchrone si son implémentation fait de l'I/O.
 
-### Ne rends pas le domaine async
-
-Ceci reste synchrone :
+Les règles métier restent synchrones :
 
 ```csharp
-order.AddItem(item);
+order.AddItem(...);
 order.Confirm();
 ```
 
-Il n'y a aucune I/O dans ces règles.
+### Exemple de confirmation
+
+```csharp
+var order = await _orders.GetByIdAsync(
+    id,
+    cancellationToken);
+
+if (order is null)
+    return;
+
+order.Confirm();
+
+await _orders.SaveChangesAsync(cancellationToken);
+```
+
+La frontière est explicite :
+
+```text
+charger
+→ modifier
+→ sauvegarder
+```
 
 ---
 
@@ -370,33 +352,22 @@ Première implémentation :
 ConsoleOrderNotifier
 ```
 
-Lors de `ConfirmAsync` :
+Flux simple :
 
 ```text
-charger la commande
- ↓
-order.Confirm()
- ↓
-persister si nécessaire
- ↓
-notifier
+charger
+→ confirmer
+→ sauvegarder
+→ notifier
 ```
 
-Réfléchis à ce qui doit se passer si la notification échoue : ce choix dépend du contrat métier et prépare les discussions plus avancées sur transactions/messages, hors scope initial.
+Le comportement exact si la notification échoue est un choix métier ; les systèmes de messaging sont hors scope initial.
 
 ---
 
-# Étape 6 — Comprendre le stockage mémoire et les lifetimes
+# Étape 6 — Comprendre les lifetimes du faux stockage
 
-Si `InMemoryOrderRepository` possède :
-
-```csharp
-private readonly Dictionary<Guid, Order> _orders = [];
-```
-
-et est `Scoped`, chaque nouvelle requête HTTP recevra normalement une nouvelle instance : les données semblent disparaître.
-
-Pour le faux stockage pédagogique :
+Pour conserver un faux stockage entre requêtes :
 
 ```csharp
 builder.Services.AddSingleton<IOrderRepository, InMemoryOrderRepository>();
@@ -405,29 +376,17 @@ builder.Services.AddScoped<IOrderNotifier, ConsoleOrderNotifier>();
 builder.Services.AddScoped<OrderService>();
 ```
 
-### Attention
+Un singleton mutable doit être utilisé avec prudence.
 
-Un singleton mutable est partagé entre requêtes. Son stockage doit être conçu pour la concurrence.
+`ConcurrentDictionary<Guid, Order>` peut protéger les opérations sur le dictionnaire, mais **ne rend pas automatiquement les objets `Order` qu'il contient thread-safe**.
 
-Tu peux utiliser par exemple :
-
-```csharp
-ConcurrentDictionary<Guid, Order>
-```
-
-ou séparer :
-
-```text
-Scoped repository
-   ↓
-Singleton in-memory store
-```
+Le faux repository sert à apprendre les lifetimes ; ce n'est pas une base de données concurrente de production.
 
 ---
 
 # Étape 7 — Exposer l'API HTTP
 
-Endpoints :
+Endpoints minimums :
 
 ```text
 GET  /products
@@ -439,7 +398,7 @@ GET  /orders
 POST /orders/{id}/confirm
 ```
 
-DTOs :
+DTOs minimums :
 
 ```csharp
 public record CreateOrderRequest(Guid CustomerId);
@@ -451,86 +410,40 @@ public sealed class AddOrderItemRequest
     [Range(1, 100)]
     public int Quantity { get; init; }
 }
-
-public record OrderItemResponse(
-    Guid ProductId,
-    string ProductName,
-    decimal UnitPrice,
-    int Quantity,
-    decimal Subtotal);
-
-public record OrderResponse(
-    Guid Id,
-    Guid CustomerId,
-    OrderStatus Status,
-    DateTimeOffset CreatedAt,
-    decimal Total,
-    IReadOnlyCollection<OrderItemResponse> Items);
 ```
 
 Comportements :
 
 ```text
-POST /orders                 → 201
-GET /orders/{id} trouvé      → 200
-GET /orders/{id} absent      → 404
-quantité invalide            → 400
-commande déjà confirmée      → 409 selon le contrat choisi
+création réussie        → 201
+ressource trouvée       → 200
+ressource absente       → 404
+entrée invalide         → 400
+conflit d'état          → 409 selon le contrat choisi
 ```
 
-Utilise `CreatedAtAction` pour la création.
+Utilise :
+
+```text
+DTOs
+CreatedAtAction
+ProblemDetails
+CancellationToken
+OpenAPI
+```
+
+comme vu au chapitre 7.
 
 ---
 
-# Étape 8 — Centraliser les erreurs et vérifier OpenAPI
-
-Ajoute :
-
-```csharp
-builder.Services.AddProblemDetails();
-```
-
-```csharp
-app.UseExceptionHandler();
-```
-
-et OpenAPI :
-
-```csharp
-builder.Services.AddOpenApi();
-```
-
-```csharp
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-}
-```
-
-Vérifie que le document reflète réellement les endpoints et DTOs attendus.
-
----
-
-# Étape 9 — Ajouter EF Core + SQLite
-
-Packages :
+# Étape 8 — Ajouter EF Core + SQLite
 
 ```bash
 dotnet package add Microsoft.EntityFrameworkCore.Sqlite
 dotnet package add Microsoft.EntityFrameworkCore.Design
 ```
 
-Configuration :
-
-```csharp
-builder.Services.AddDbContext<AppDbContext>(options =>
-{
-    options.UseSqlite(
-        builder.Configuration.GetConnectionString("Database"));
-});
-```
-
-Le modèle relationnel cible :
+Schéma cible :
 
 ```text
 Products
@@ -553,19 +466,11 @@ OrderItems
 - Quantity
 ```
 
-**Pas de colonne `Orders.Total` dans cette version.**
+Il n'y a pas de colonne `Orders.Total` dans cette version.
 
----
-
-# Étape 10 — Mapper sans casser l'encapsulation
-
-Dans `OnModelCreating` :
+Mapping important :
 
 ```csharp
-var order = modelBuilder.Entity<Order>();
-
-order.HasKey(x => x.Id);
-
 order.HasMany(x => x.Items)
     .WithOne()
     .HasForeignKey(x => x.OrderId)
@@ -574,55 +479,32 @@ order.HasMany(x => x.Items)
 order.Navigation(x => x.Items)
     .HasField("_items")
     .UsePropertyAccessMode(PropertyAccessMode.Field);
-
-var item = modelBuilder.Entity<OrderItem>();
-item.HasKey(x => x.Id);
-item.Property(x => x.ProductName).HasMaxLength(200);
-item.Property(x => x.UnitPrice).HasPrecision(18, 2);
 ```
-
-Le domaine conserve :
-
-```csharp
-private readonly List<OrderItem> _items = [];
-public IReadOnlyCollection<OrderItem> Items => _items;
-```
-
-Ne réouvre pas un setter public juste pour EF Core.
-
----
-
-# Étape 11 — Migration
-
-```bash
-dotnet ef migrations add InitialCreate
-```
-
-Avant d'appliquer :
-
-- lis le fichier ;
-- vérifie les trois tables ;
-- vérifie `OrderItems.OrderId` ;
-- vérifie l'absence de `Orders.Total`.
 
 Puis :
 
 ```bash
+dotnet ef migrations add InitialCreate
 dotnet ef database update
 ```
 
+Lis la migration avant de l'appliquer.
+
 ---
 
-# Étape 12 — Passer du repository mémoire à EF
+# Étape 9 — Implémenter le repository EF
 
-Créer :
+Le repository EF utilise un `AppDbContext` scoped.
 
-```text
-EfOrderRepository
-EfProductCatalog
+```csharp
+public Task SaveChangesAsync(
+    CancellationToken cancellationToken)
+{
+    return _dbContext.SaveChangesAsync(cancellationToken);
+}
 ```
 
-Puis changer la composition :
+Composition :
 
 ```csharp
 builder.Services.AddDbContext<AppDbContext>(...);
@@ -630,24 +512,22 @@ builder.Services.AddScoped<IOrderRepository, EfOrderRepository>();
 builder.Services.AddScoped<IProductCatalog, EfProductCatalog>();
 ```
 
-Le service doit changer le moins possible.
-
-### Pourquoi le lifetime change ?
+Pourquoi le lifetime change ?
 
 ```text
 repository mémoire singleton
-→ sa collection était elle-même le stockage
+→ sa collection était le stockage
 
 repository EF scoped
 → les données vivent dans la base
 → le repository utilise un DbContext scoped
 ```
 
+`OrderService` doit changer le moins possible.
+
 ---
 
-# Étape 13 — Requêtes de lecture efficaces
-
-Résumé :
+# Étape 10 — Écrire des lectures efficaces
 
 ```csharp
 public record OrderSummary(
@@ -670,7 +550,7 @@ var query = dbContext.Orders
     .Take(5);
 ```
 
-Avant d'exécuter :
+Avant la matérialisation :
 
 ```csharp
 Console.WriteLine(query.ToQueryString());
@@ -683,89 +563,75 @@ var summaries = await query
     .ToListAsync(cancellationToken);
 ```
 
-Questions :
+Tu dois savoir expliquer :
 
-- où le filtre est-il exécuté ?
-- quand la requête part-elle en base ?
-- pourquoi `AsNoTracking()` ?
-- pourquoi projeter ?
-- pourquoi ne pas écrire simplement `.Where(x => x.Total > 100m)` si `Total` est une propriété C# calculée non mappée ?
-
----
-
-# Étape 14 — Chargement des relations
-
-Commande complète :
-
-```csharp
-var order = await dbContext.Orders
-    .Include(x => x.Items)
-    .FirstOrDefaultAsync(
-        x => x.Id == id,
-        cancellationToken);
-```
-
-Liste de résumés : préfère souvent une projection plutôt que charger des graphes complets.
-
-Exercice : provoque volontairement un scénario N+1, compte les requêtes, puis refactore.
+- pourquoi la requête n'est pas exécutée immédiatement ;
+- pourquoi `AsNoTracking()` convient ici ;
+- pourquoi on projette ;
+- pourquoi `Order.Total` n'est pas utilisé directement dans la requête EF.
 
 ---
 
-# Étape 15 — Tests unitaires
+# Étape 11 — Tester
 
-Écris au minimum :
+## Domaine
+
+Teste directement :
 
 ```text
-Order.Confirm commande vide
-Order.AddItem commande confirmée
-OrderItem prix snapshot
-OrderService.AddItem produit absent
-OrderService.AddItem capture le prix
-OrderService.Confirm appelle le notifier
+Order.Confirm
+Order.AddItem
+prix historique
+OrderId de la ligne
+Total
 ```
 
-Utilise d'abord des fakes simples.
+## Service
 
----
+Utilise des fakes :
 
-# Étape 16 — Tests d'intégration
+```text
+produit absent
+prix capturé
+SaveChangesAsync appelé après modification
+notification demandée après confirmation
+```
 
-Utilise `WebApplicationFactory<Program>` avec SQLite in-memory comme montré au chapitre 9.
+## Intégration
+
+Utilise `WebApplicationFactory<Program>` + SQLite in-memory.
+
+Avant chaque scénario :
+
+```csharp
+await _factory.ResetDatabaseAsync();
+```
+
+puis seed uniquement les données nécessaires.
 
 Scénario essentiel :
 
 ```text
-POST /orders
-→ 201 + Location
+reset DB
+→ seed produit
+→ POST /orders
 → POST /orders/{id}/items
 → POST /orders/{id}/confirm
-→ GET Location
-→ 200
-→ total et statut corrects
-```
-
-Ce test doit traverser :
-
-```text
-HTTP
-routing/binding
-DI
-service
-EF Core
-SQLite
+→ GET /orders/{id}
+→ vérifier statut + total
 ```
 
 ---
 
-# Étape 17 — Refactorer seulement maintenant
+# Étape 12 — Refactorer seulement si le besoin apparaît
 
 Observe :
 
 - domaine noyé dans ASP.NET Core ?
 - EF utilisé partout ?
-- DTOs HTTP utilisés dans le métier ?
+- DTOs HTTP dans le métier ?
 - projet difficile à naviguer ?
-- dépendances devenues confuses ?
+- dépendances confuses ?
 
 Si oui, envisage :
 
@@ -777,59 +643,47 @@ OrderApi.Infrastructure
 OrderApi.Tests
 ```
 
-Pour chaque extraction, justifie le problème qu'elle résout.
+Chaque extraction doit résoudre un problème identifiable.
 
 ---
 
-# Étape 18 — Challenges patterns
+# Étape 13 — Challenges patterns
 
-## Strategy
-
-Ajouter :
+Une fois le projet fonctionnel :
 
 ```text
-Standard
-Express
-International
+Strategy
+→ plusieurs modes de frais de livraison
+
+Adapter
+→ intégrer un client email tiers derrière IOrderNotifier
+
+Decorator
+→ ajouter du logging autour du notifier
 ```
 
-pour les frais de livraison.
-
-## Adapter
-
-Créer :
-
-```text
-ThirdPartyEmailClient
-      ↓ adapter
-IOrderNotifier
-```
-
-## Decorator
-
-Ajouter du logging autour du notifier sans modifier son implémentation principale.
+N'ajoute pas un pattern uniquement parce qu'il existe dans le chapitre précédent.
 
 ---
 
 # Critères de fin de parcours
 
-Tu dois pouvoir répondre sans relire le workbook :
+Tu dois pouvoir expliquer sans relire le workbook :
 
-1. Pourquoi `Order` protège-t-il ses invariants ?
-2. Pourquoi `OrderItem` capture-t-il `UnitPrice` ?
-3. Pourquoi le code commence-t-il synchrone avant de passer à `Task` ?
-4. Pourquoi `OrderService` reçoit-il ses dépendances ?
-5. Pourquoi le repository mémoire a-t-il un lifetime différent du repository EF ?
-6. Pourquoi un singleton mutable doit-il être thread-safe ?
-7. Pourquoi `Order.Total` n'est-il pas une colonne dans notre schéma ?
-8. Comment EF persiste-t-il la collection privée `_items` ?
-9. Quand une requête `IQueryable` est-elle exécutée ?
-10. Pourquoi projeter un `OrderSummary` ?
-11. Pourquoi ne pas lancer plusieurs opérations sur le même `DbContext` ?
-12. Quelle différence entre un test domaine, service et HTTP ?
-13. Pourquoi SQLite in-memory est-il plus pertinent qu'EF InMemory pour certains tests relationnels ?
-14. Pourquoi une nouvelle couche doit-elle résoudre un problème identifiable ?
-15. Quel problème concret justifie chaque pattern ajouté ?
+1. pourquoi `Order` protège ses invariants ;
+2. pourquoi `OrderItem` capture `UnitPrice` ;
+3. pourquoi `Order` crée ses propres items et renseigne `OrderId` ;
+4. pourquoi le code commence synchrone avant de passer à `Task` ;
+5. pourquoi `OrderService` reçoit ses dépendances ;
+6. pourquoi `SaveChangesAsync` est nécessaire après une modification EF ;
+7. pourquoi le repository mémoire et le repository EF n'ont pas le même lifetime ;
+8. pourquoi `ConcurrentDictionary` ne rend pas tout l'agrégat thread-safe ;
+9. pourquoi `Order.Total` n'est pas une colonne ;
+10. comment EF persiste la collection privée `_items` ;
+11. quand une requête `IQueryable` est exécutée ;
+12. pourquoi les tests d'intégration réinitialisent leur base ;
+13. pourquoi une nouvelle couche doit résoudre un problème identifiable ;
+14. quel problème concret justifie chaque pattern ajouté.
 
 ---
 
@@ -848,4 +702,4 @@ microservices
 cloud / Kubernetes
 ```
 
-Ils ne sont pas nécessaires pour valider les fondamentaux de ce workbook.
+Ces sujets ne sont pas nécessaires pour valider les fondamentaux du workbook.
