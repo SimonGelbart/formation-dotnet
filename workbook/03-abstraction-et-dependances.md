@@ -5,6 +5,7 @@
 À la fin de ce chapitre, tu dois savoir :
 
 - distinguer classe concrète, classe abstraite et interface ;
+- comprendre une différence importante entre les interfaces TypeScript et C# ;
 - expliquer pourquoi on dépend souvent d'un contrat plutôt que d'une implémentation ;
 - définir ce qu'est une dépendance ;
 - expliquer l'injection de dépendances ;
@@ -12,8 +13,10 @@
 - comprendre ce que le conteneur DI intégré à .NET sait réellement faire ;
 - comprendre la différence entre DI et conteneur de DI ;
 - comprendre les lifetimes `Transient`, `Scoped` et `Singleton` ;
-- identifier un problème de durée de vie, notamment un singleton mutable ou une dépendance scoped capturée trop longtemps ;
+- identifier un problème de durée de vie ;
 - utiliser SOLID comme outil de raisonnement et non comme liste à réciter.
+
+> Dans ce chapitre, les exemples de repository sont volontairement **synchrones**. `Task`, `async` et `CancellationToken` seront introduits au chapitre 5, où nous ferons évoluer ces contrats.
 
 ---
 
@@ -34,7 +37,7 @@ Elle peut contenir de l'état et du comportement partagé, mais ne peut pas êtr
 ```csharp
 public abstract class NotificationSender
 {
-    public abstract Task SendAsync(string message);
+    public abstract void Send(string message);
 }
 ```
 
@@ -45,7 +48,7 @@ Elle exprime surtout un **contrat** :
 ```csharp
 public interface INotificationSender
 {
-    Task SendAsync(string message);
+    void Send(string message);
 }
 ```
 
@@ -54,10 +57,9 @@ Plusieurs implémentations peuvent respecter ce contrat :
 ```csharp
 public class EmailSender : INotificationSender
 {
-    public Task SendAsync(string message)
+    public void Send(string message)
     {
         Console.WriteLine($"Email: {message}");
-        return Task.CompletedTask;
     }
 }
 ```
@@ -65,10 +67,9 @@ public class EmailSender : INotificationSender
 ```csharp
 public class SmsSender : INotificationSender
 {
-    public Task SendAsync(string message)
+    public void Send(string message)
     {
         Console.WriteLine($"SMS: {message}");
-        return Task.CompletedTask;
     }
 }
 ```
@@ -81,15 +82,61 @@ Une interface est souvent adaptée lorsqu'on veut surtout exprimer une capacité
 
 Une classe abstraite devient plus intéressante lorsqu'il existe réellement du comportement ou de l'état partagé entre les implémentations.
 
-Si `EmailSender` et `SmsSender` n'ont rien d'autre en commun que la méthode `SendAsync`, l'interface est probablement le contrat le plus simple.
-
-### Parallèle TypeScript
-
-Une interface TypeScript est souvent utilisée pour décrire la forme d'une donnée. En C#, une interface est très souvent utilisée comme **contrat comportemental** entre composants.
+Si `EmailSender` et `SmsSender` n'ont rien d'autre en commun que `Send`, l'interface est probablement le contrat le plus simple.
 
 ---
 
-## 2. Dépendre d'une abstraction
+## 2. Interface TypeScript vs interface C# : structurelle vs nominale
+
+En TypeScript, le typage est largement **structurel** : un objet peut satisfaire une interface simplement parce qu'il possède la bonne forme.
+
+```ts
+interface Sender {
+  send(message: string): void;
+}
+
+class EmailSender {
+  send(message: string) {}
+}
+
+const sender: Sender = new EmailSender();
+```
+
+`EmailSender` n'a pas besoin d'écrire explicitement `implements Sender` pour être compatible si sa structure convient.
+
+En C#, la relation avec une interface est **explicitement déclarée** :
+
+```csharp
+public interface ISender
+{
+    void Send(string message);
+}
+
+public class EmailSender : ISender
+{
+    public void Send(string message)
+    {
+    }
+}
+```
+
+Une classe possédant par hasard une méthode `Send` avec la bonne signature n'est pas pour autant un `ISender`.
+
+### Pourquoi cette différence est utile à comprendre ?
+
+Quand tu lis :
+
+```csharp
+public class EmailSender : ISender
+```
+
+le code annonce explicitement :
+
+> « `EmailSender` s'engage à respecter ce contrat. »
+
+---
+
+## 3. Dépendre d'une abstraction
 
 Version fortement couplée :
 
@@ -120,11 +167,9 @@ public class OrderService
 }
 ```
 
-`OrderService` exprime désormais uniquement son besoin :
+`OrderService` exprime uniquement son besoin :
 
 > « J'ai besoin de quelque chose capable d'envoyer une notification. »
-
-Il ne décide plus de la manière dont cette notification est envoyée.
 
 ### `new` n'est pas le problème
 
@@ -132,14 +177,14 @@ Ne retiens surtout pas :
 
 > « il ne faut jamais utiliser `new` ».
 
-Ceci est parfaitement normal :
+Ceci est normal :
 
 ```csharp
 var order = new Order();
 var item = new OrderItem(...);
 ```
 
-Le problème apparaît plutôt lorsqu'un composant métier ou applicatif **cache la création d'une dépendance externe ou remplaçable** :
+Le problème apparaît plutôt lorsqu'un composant applicatif cache la création d'une dépendance externe ou remplaçable :
 
 ```csharp
 public class OrderService
@@ -148,17 +193,15 @@ public class OrderService
 }
 ```
 
-La vraie question est :
+La bonne question est :
 
 > cet objet est-il une donnée que je possède, ou un collaborateur dont mon composant dépend ?
 
 ---
 
-## 3. Qu'est-ce qu'une dépendance ?
+## 4. Qu'est-ce qu'une dépendance ?
 
 Une dépendance est un objet dont un autre objet a besoin pour réaliser son travail.
-
-Exemples :
 
 ```text
 OrderService
@@ -166,15 +209,11 @@ OrderService
 └── INotificationSender
 ```
 
-`OrderService` dépend de ces deux collaborateurs.
-
-### Définition
-
 > Injecter une dépendance consiste à la fournir depuis l'extérieur plutôt qu'à laisser l'objet la créer lui-même.
 
 ---
 
-## 4. Les formes d'injection
+## 5. Les formes d'injection
 
 ### Injection par constructeur
 
@@ -187,11 +226,7 @@ public OrderService(IOrderRepository repository)
 
 À privilégier pour les dépendances obligatoires.
 
-Avantage : un `OrderService` ne peut pas être construit dans un état incomplet.
-
 ### Injection par méthode
-
-Conceptuellement, une dépendance peut être fournie seulement à la méthode qui en a besoin :
 
 ```csharp
 public Report GenerateReport(IFormatter formatter)
@@ -200,7 +235,7 @@ public Report GenerateReport(IFormatter formatter)
 }
 ```
 
-Dans ASP.NET Core, on rencontre aussi ce principe à la frontière HTTP : une dépendance peut être fournie directement à une action ou à un route handler.
+Une dépendance est fournie uniquement à l'opération qui en a besoin.
 
 ### Injection par propriété
 
@@ -214,15 +249,15 @@ Elle rend la dépendance potentiellement absente et le cycle de vie moins évide
 
 ### Important : concept DI vs conteneur Microsoft
 
-Les trois formes ci-dessus existent comme techniques de conception, mais le **conteneur DI intégré à .NET est centré sur l'injection par constructeur** et ne réalise pas automatiquement l'injection de propriétés.
+Les trois formes existent comme techniques de conception, mais le **conteneur DI intégré à .NET est centré sur l'injection par constructeur** et ne réalise pas automatiquement l'injection de propriétés.
 
-Dans une application ASP.NET Core classique, le réflexe par défaut doit donc être :
+Réflexe par défaut :
 
 > dépendance obligatoire → constructeur.
 
 ---
 
-## 5. DI ≠ conteneur de DI
+## 6. DI ≠ conteneur de DI
 
 Ce code utilise déjà l'injection de dépendances :
 
@@ -244,11 +279,13 @@ builder.Services.AddScoped<INotificationSender, EmailSender>();
 
 Puis ASP.NET Core peut construire les objets pour nous.
 
-La DI est donc le principe ; le conteneur est un outil qui applique ce principe à grande échelle.
+La DI est le principe ; le conteneur est un outil.
 
 ---
 
-## 6. Lifetimes
+## 7. Lifetimes
+
+Les lifetimes seront observés concrètement avec ASP.NET Core au chapitre 7. Pour l'instant, comprends leur intention.
 
 ### `Transient`
 
@@ -256,21 +293,19 @@ Une nouvelle instance est créée à chaque résolution.
 
 ### `Scoped`
 
-Dans une application web ASP.NET Core, un scope est normalement créé pour chaque requête HTTP. Les services scoped résolus dans cette requête partagent donc la même instance.
+Une même instance est réutilisée à l'intérieur d'un scope. Dans ASP.NET Core, un scope correspond normalement à une requête HTTP.
 
 ### `Singleton`
 
 Une seule instance est conservée pour toute la durée de vie de l'application.
-
-Représentation mentale :
 
 ```text
 Singleton
 ──────────────────────── application
 
 Scoped
-──── request A ────
-                  ──── request B ────
+──── scope A ────
+               ──── scope B ────
 
 Transient
 ─ instance
@@ -280,20 +315,11 @@ Transient
 
 ### Singleton mutable
 
-Un singleton peut être utilisé par plusieurs requêtes en même temps. S'il contient un état mutable partagé, cet état doit être conçu pour l'accès concurrent.
-
-```csharp
-public class Counter
-{
-    public int Value { get; set; }
-}
-```
-
-En singleton, plusieurs requêtes pourraient lire et modifier `Value` simultanément.
+Un singleton peut être utilisé par plusieurs opérations simultanément. S'il contient un état mutable partagé, cet état doit être conçu pour la concurrence.
 
 ### Dépendance captive
 
-Autre problème classique : faire dépendre un objet très long-lived d'un objet plus court-lived.
+Un objet très long-lived ne devrait pas conserver par erreur une dépendance conçue pour vivre moins longtemps :
 
 ```text
 Singleton
@@ -301,47 +327,13 @@ Singleton
 Scoped service
 ```
 
-Le singleton risque alors de conserver une instance scoped au-delà de la durée pour laquelle elle a été conçue.
-
-C'est notamment une raison pour laquelle il faut raisonner sur les lifetimes, pas seulement apprendre trois définitions.
-
----
-
-## 7. Exercice d'observation des lifetimes
-
-Créer :
-
-```csharp
-public class InstanceId
-{
-    public Guid Id { get; } = Guid.NewGuid();
-}
-```
-
-L'injecter dans deux services utilisés pendant une même requête, puis tester successivement :
-
-```csharp
-AddTransient<InstanceId>()
-AddScoped<InstanceId>()
-AddSingleton<InstanceId>()
-```
-
-Observe les GUID :
-
-- sont-ils identiques dans une même requête ?
-- changent-ils entre deux requêtes ?
-
-Ne lis pas seulement la définition des lifetimes : **observe leur comportement**.
+Le chapitre ASP.NET Core permettra d'observer concrètement ces comportements.
 
 ---
 
 ## 8. SOLID sans récitation
 
-SOLID sert à mettre des mots sur des problèmes de conception.
-
 ### SRP — Single Responsibility Principle
-
-Considère :
 
 ```csharp
 public class OrderService
@@ -360,13 +352,9 @@ public class OrderService
 
 Question : **combien de raisons différentes peuvent forcer cette classe à changer ?**
 
-Si elle gère la base, les emails, les PDF et le métier, elle concentre plusieurs responsabilités.
-
 ### DIP — Dependency Inversion Principle
 
-Une formulation utile est : les composants contenant les politiques importantes de l'application ne devraient pas être forcés de dépendre directement des détails techniques qu'ils orchestrent.
-
-Couplage direct :
+Une formulation utile : les composants contenant les politiques importantes de l'application ne devraient pas être forcés de dépendre directement des détails techniques qu'ils orchestrent.
 
 ```text
 OrderService
@@ -374,7 +362,7 @@ OrderService
 SqlOrderRepository
 ```
 
-Une frontière possible :
+peut devenir :
 
 ```text
 OrderService
@@ -384,13 +372,11 @@ IOrderRepository
 SqlOrderRepository
 ```
 
-Mais attention : **DIP ne signifie pas « une interface devant chaque classe »**. Une abstraction doit exprimer une frontière utile.
+Mais DIP ne signifie pas « une interface devant chaque classe ».
 
 ### ISP — Interface Segregation Principle
 
-Préférer plusieurs contrats cohérents à une interface énorme qui force chaque implémentation à supporter des méthodes inutiles.
-
-Mauvais exemple :
+Préférer des contrats cohérents à une interface énorme qui force chaque implémentation à supporter des opérations inutiles.
 
 ```csharp
 public interface IRepository
@@ -403,13 +389,13 @@ public interface IRepository
 }
 ```
 
-Si les implémentations n'ont besoin que d'une petite partie du contrat, l'interface mélange probablement plusieurs responsabilités.
+Cette interface mélange clairement plusieurs responsabilités.
 
 ---
 
 ## Exercice — code review
 
-Analyse ce code :
+Analyse :
 
 ```csharp
 public class OrderService
@@ -425,31 +411,31 @@ public class OrderService
 }
 ```
 
-Identifie au moins trois problèmes de conception.
+Identifie au moins trois problèmes.
 
 <details>
 <summary>Correction possible</summary>
 
-- `OrderService` choisit lui-même ses implémentations concrètes ;
-- il est difficile à tester sans toucher SQL et email ;
+- le service choisit ses implémentations concrètes ;
+- il est difficile à tester sans SQL/email ;
 - remplacer l'infrastructure implique de modifier le service ;
-- la création des collaborateurs et l'orchestration métier sont mélangées ;
+- création des collaborateurs et orchestration sont mélangées ;
 - le cycle de vie des dépendances est caché.
 
-Le problème n'est pas la présence du mot-clé `new` en soi : c'est le fait que le service construit lui-même des dépendances techniques qu'on voudrait pouvoir remplacer.
+Le problème n'est pas le mot-clé `new` en lui-même : c'est le fait de construire ici des dépendances techniques remplaçables.
 </details>
 
 ---
 
 ## Application au projet fil rouge
 
-Créer :
+À ce stade, garde le contrat simple et synchrone :
 
 ```csharp
 public interface IOrderRepository
 {
-    Task<Order?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
-    Task AddAsync(Order order, CancellationToken cancellationToken);
+    Order? GetById(Guid id);
+    void Add(Order order);
 }
 ```
 
@@ -462,16 +448,24 @@ public class InMemoryOrderRepository : IOrderRepository
 }
 ```
 
-Enfin injecter le repository dans `OrderService`.
+Injecte ensuite le repository dans `OrderService`.
+
+Au chapitre 5, ce contrat évoluera volontairement vers :
+
+```text
+Task / Task<T>
+CancellationToken
+```
+
+lorsque ces notions auront été expliquées.
 
 ### Checkpoint
 
 Tu dois pouvoir expliquer :
 
 1. pourquoi `new Order()` est normal alors que `new SqlOrderRepository()` dans `OrderService` peut poser problème ;
-2. pourquoi constructor injection est le choix par défaut dans le conteneur .NET ;
-3. ce que change un lifetime `Scoped` dans une API ;
-4. pourquoi un singleton mutable doit être conçu pour la concurrence ;
-5. pourquoi créer une interface pour chaque classe n'est pas une application correcte de DIP.
-
-Le but est de pouvoir remplacer l'implémentation mémoire plus tard par EF Core sans réécrire la logique métier.
+2. la différence entre compatibilité structurelle TypeScript et implémentation explicite d'une interface C# ;
+3. pourquoi constructor injection est le choix par défaut ;
+4. ce que signifient Transient, Scoped et Singleton sans encore dépendre d'ASP.NET Core ;
+5. pourquoi un singleton mutable mérite une attention particulière ;
+6. pourquoi créer une interface pour chaque classe n'est pas une application correcte de DIP.
