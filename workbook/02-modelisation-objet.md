@@ -57,7 +57,7 @@ order.Total = -1000;
 order.Status = "Anything";
 ```
 
-Une version métier plus protectrice ne laisse pas le consommateur inventer son état :
+Version plus protectrice :
 
 ```csharp
 public class Order
@@ -71,40 +71,38 @@ public class Order
     public void Confirm()
     {
         if (_items.Count == 0)
-            throw new InvalidOperationException("An empty order cannot be confirmed.");
+            throw new InvalidOperationException(
+                "An empty order cannot be confirmed.");
 
         Status = OrderStatus.Confirmed;
     }
 }
 ```
 
-### Pourquoi tester `_items.Count == 0` plutôt que `Total <= 0` ?
+### Pourquoi `_items.Count == 0` plutôt que `Total <= 0` ?
 
 Parce que la règle métier est :
 
 > une commande vide ne peut pas être confirmée.
 
-Une commande peut contenir un produit gratuit et avoir un total à `0`. Tester le total serait donc une approximation de la vraie règle.
+Une commande peut contenir un produit gratuit et avoir un total à `0`.
 
-### Idée clé
-
-> Un invariant doit exprimer la règle métier réelle, pas seulement un indicateur qui lui ressemble souvent.
+> Un invariant doit exprimer la règle métier réelle, pas seulement un indicateur qui lui ressemble.
 
 ---
 
 ## 3. Encapsuler aussi les collections
 
-Ceci expose une liste modifiable à tout le monde :
+Ceci expose une liste modifiable :
 
 ```csharp
 public List<OrderItem> Items { get; } = [];
 ```
 
-Du code extérieur peut contourner les règles :
+Du code extérieur peut alors faire :
 
 ```csharp
 order.Items.Clear();
-order.Items.Add(invalidItem);
 ```
 
 Approche plus protectrice :
@@ -114,19 +112,33 @@ public class Order
 {
     private readonly List<OrderItem> _items = [];
 
+    public Guid Id { get; } = Guid.NewGuid();
+    public OrderStatus Status { get; private set; } = OrderStatus.Draft;
     public IReadOnlyCollection<OrderItem> Items => _items;
 
-    public void AddItem(OrderItem item)
+    public void AddItem(
+        Guid productId,
+        string productName,
+        decimal unitPrice,
+        int quantity)
     {
         if (Status != OrderStatus.Draft)
-            throw new InvalidOperationException("Confirmed orders cannot be modified.");
+            throw new InvalidOperationException(
+                "Confirmed orders cannot be modified.");
 
-        _items.Add(item);
+        _items.Add(new OrderItem(
+            Id,
+            productId,
+            productName,
+            unitPrice,
+            quantity));
     }
 }
 ```
 
-`IReadOnlyCollection<T>` empêche surtout la modification de **la collection via ce contrat**. Il ne rend pas automatiquement les objets contenus immuables.
+La commande contrôle désormais **comment** une ligne entre dans sa collection. Elle peut garantir que la ligne appartient à la bonne commande et appliquer ses règles avant l'ajout.
+
+`IReadOnlyCollection<T>` empêche surtout la modification de la collection via ce contrat. Il ne rend pas les objets contenus profondément immuables.
 
 ---
 
@@ -285,10 +297,10 @@ public class Product
 var a = new Product { Name = "Keyboard", Price = 100m };
 var b = new Product { Name = "Keyboard", Price = 100m };
 
-Console.WriteLine(a.Equals(b)); // généralement false sans sémantique personnalisée
+Console.WriteLine(a.Equals(b)); // généralement false
 ```
 
-Un `record` fournit par défaut une sémantique de valeur plus naturelle pour ses composants.
+Un `record` fournit par défaut une sémantique de valeur plus naturelle.
 
 ### Contrat `Equals` / `GetHashCode`
 
@@ -304,19 +316,9 @@ L'inverse n'est pas garanti.
 
 `Dictionary<TKey,TValue>` et `HashSet<T>` utilisent cette combinaison pour organiser et retrouver leurs éléments.
 
-### Expérience avec `HashSet<T>`
+### Expérience
 
-Crée deux instances de classe contenant les mêmes données puis ajoute-les à un `HashSet<T>`. Compare ensuite le comportement avec un `record` équivalent.
-
-L'objectif est de rendre concret le lien :
-
-```text
-égalité
-   ↓
-GetHashCode
-   ↓
-HashSet / Dictionary
-```
+Crée deux instances de classe contenant les mêmes données puis ajoute-les à un `HashSet<T>`. Compare ensuite avec un `record` équivalent.
 
 ---
 
@@ -352,12 +354,7 @@ public static class Database
 }
 ```
 
-Cela complique potentiellement :
-
-- les tests ;
-- la concurrence ;
-- le cycle de vie ;
-- le remplacement de l'implémentation.
+Cela complique potentiellement les tests, la concurrence, le cycle de vie et le remplacement de l'implémentation.
 
 `static` n'est pas mauvais en soi ; **l'état global mutable** mérite surtout d'être traité avec prudence.
 
@@ -406,6 +403,7 @@ Faire évoluer `Order` pour qu'une commande :
 
 - possède une collection privée d'items ;
 - expose cette collection en lecture seule ;
+- crée elle-même ses items avec son propre `Id` ;
 - refuse une quantité <= 0 via la création de l'item ;
 - calcule son total à partir de ses items ;
 - ne laisse pas un consommateur écrire directement un total arbitraire ;
