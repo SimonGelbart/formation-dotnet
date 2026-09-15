@@ -177,11 +177,11 @@ Ne retiens surtout pas :
 
 > « il ne faut jamais utiliser `new` ».
 
-Ceci est normal :
+Créer un objet que l'on possède est parfaitement normal :
 
 ```csharp
 var order = new Order();
-var item = new OrderItem(...);
+var names = new List<string>();
 ```
 
 Le problème apparaît plutôt lorsqu'un composant applicatif cache la création d'une dépendance externe ou remplaçable :
@@ -455,6 +455,7 @@ Au chapitre 5, ce contrat évoluera volontairement vers :
 ```text
 Task / Task<T>
 CancellationToken
+SaveChangesAsync
 ```
 
 lorsque ces notions auront été expliquées.
