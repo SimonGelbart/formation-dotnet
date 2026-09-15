@@ -15,9 +15,9 @@
 - comprendre tracking et `AsNoTracking()` ;
 - comprendre eager / explicit / lazy loading ;
 - inspecter le SQL avec `ToQueryString()` ;
-- reconnaître N+1 et autres problèmes de requêtes.
+- reconnaître N+1 et les matérialisations trop précoces.
 
-Ce chapitre garde **un seul modèle Order cohérent** :
+Ce chapitre garde un seul modèle cohérent :
 
 ```text
 Order
@@ -36,15 +36,13 @@ OrderItem
 - Quantity
 ```
 
-`Order.Total` est calculé à partir des items. Il n'est pas présenté ici comme une colonne stockée.
+`Order.Total` est calculé à partir des items. Il n'est pas stocké dans une colonne `Orders.Total`.
 
 ---
 
 # 1. SQL avant EF Core
 
 EF Core permet d'écrire des requêtes en C#, mais la base reste relationnelle.
-
-Schéma simplifié :
 
 ```text
 Orders
@@ -58,48 +56,34 @@ OrderItems
 └────────────┴────────────┴───────────┴─────────────┴───────────┴──────────┘
 ```
 
-Le total d'une commande peut être obtenu par agrégation :
+Pour calculer le total de toutes les commandes, y compris les commandes vides :
 
 ```sql
 SELECT o.Id,
-       SUM(i.UnitPrice * i.Quantity) AS Total
+       COALESCE(SUM(i.UnitPrice * i.Quantity), 0) AS Total
 FROM Orders o
-JOIN OrderItems i ON i.OrderId = o.Id
+LEFT JOIN OrderItems i ON i.OrderId = o.Id
 GROUP BY o.Id;
 ```
 
-Cette décision évite une contradiction entre :
+Pourquoi `LEFT JOIN` ? Une commande `Draft` peut exister avant d'avoir des items. Un `INNER JOIN` l'exclurait du résultat.
 
-```text
-Total calculé dans le domaine
-```
+`COALESCE(..., 0)` transforme le total `NULL` d'une commande sans item en `0`.
 
-et :
-
-```text
-Total stocké automatiquement en base
-```
-
-On pourrait choisir de stocker un total pour des raisons métier ou de performance, mais ce serait alors une décision explicite avec une stratégie de cohérence.
+Cette requête montre aussi une idée importante : le total peut être **calculé à la lecture** sans devenir automatiquement une colonne persistée.
 
 ---
 
 ## 2. Tables, clés et relations
 
-Une table regroupe des lignes structurées en colonnes.
-
-### Primary Key
-
-Identifie une ligne :
+Une **Primary Key** identifie une ligne :
 
 ```text
 Orders.Id
 OrderItems.Id
 ```
 
-### Foreign Key
-
-Relie des tables :
+Une **Foreign Key** relie deux tables :
 
 ```text
 OrderItems.OrderId → Orders.Id
@@ -111,7 +95,7 @@ La relation est :
 Order 1 ───── * OrderItems
 ```
 
-Il faut reconnaître au minimum :
+Reconnais au minimum :
 
 ```text
 one-to-one
@@ -134,9 +118,9 @@ Lis-la comme une pipeline :
 
 ```text
 Orders
- ↓ filtrer les confirmées
- ↓ sélectionner certaines colonnes
- ↓ trier par date décroissante
+ ↓ filtrer
+ ↓ sélectionner
+ ↓ trier
 ```
 
 Cette lecture prépare LINQ to Entities.
@@ -151,7 +135,11 @@ FROM Orders o
 JOIN OrderItems i ON i.OrderId = o.Id;
 ```
 
-Une navigation EF peut provoquer une jointure ou plusieurs requêtes selon la manière dont la requête est écrite et les relations chargées.
+`JOIN` ne garde que les commandes ayant une ligne correspondante.
+
+`LEFT JOIN` garde aussi les commandes sans item.
+
+EF Core peut produire des jointures ou plusieurs requêtes selon la requête LINQ et la stratégie de chargement choisie.
 
 ---
 
@@ -159,7 +147,7 @@ Une navigation EF peut provoquer une jointure ou plusieurs requêtes selon la ma
 
 Un index peut accélérer les recherches sur des colonnes réellement utilisées comme critères.
 
-Exemples potentiels :
+Exemples possibles :
 
 ```text
 Orders.CustomerId
@@ -167,15 +155,15 @@ Orders.CreatedAt
 OrderItems.OrderId
 ```
 
-Un index a aussi un coût : stockage et maintenance lors des écritures.
+Un index coûte aussi du stockage et du travail lors des écritures.
 
-> Ajouter un index parce qu'une colonne existe n'est pas une stratégie. Il doit répondre à un besoin de requête.
+> Ajoute un index pour répondre à un besoin de requête, pas simplement parce qu'une colonne existe.
 
 ---
 
 ## 6. Transactions
 
-Une transaction regroupe plusieurs opérations dans une unité cohérente.
+Une transaction regroupe plusieurs changements dans une unité cohérente.
 
 ```text
 ajouter Order
@@ -183,33 +171,26 @@ ajouter OrderItems
 sauvegarder
 ```
 
-Un `SaveChanges` relationnel est généralement transactionnel pour l'ensemble des modifications qu'il envoie. Plusieurs `SaveChanges` ou plusieurs systèmes externes demandent davantage de réflexion.
+Un `SaveChanges` relationnel est généralement transactionnel pour les modifications qu'il envoie lors de cet appel. Plusieurs `SaveChanges` ou plusieurs systèmes externes demandent davantage de réflexion.
 
 ---
 
 # 7. Installer EF Core avec SQLite
 
-Pour le workbook, SQLite est pratique : vraie base relationnelle, installation légère, fichier local.
-
 Dans le projet API :
 
 ```bash
 dotnet package add Microsoft.EntityFrameworkCore.Sqlite
-```
-
-Pour les migrations :
-
-```bash
 dotnet package add Microsoft.EntityFrameworkCore.Design
 ```
 
-Puis vérifier l'outil :
+Puis :
 
 ```bash
 dotnet ef --version
 ```
 
-Le chapitre 6 explique la différence entre package NuGet et outil `dotnet`.
+SQLite est pratique ici : c'est une vraie base relationnelle, légère et locale.
 
 ---
 
@@ -234,13 +215,10 @@ public sealed class AppDbContext : DbContext
 }
 ```
 
-`DbContext` représente une unité de travail courte avec la base et maintient notamment un change tracker.
-
-### Important
-
 Un `DbContext` :
 
-- est normalement de courte durée ;
+- représente une unité de travail courte ;
+- maintient un change tracker ;
 - n'est pas thread-safe ;
 - ne doit pas servir à plusieurs opérations concurrentes simultanées.
 
@@ -274,10 +252,10 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 # 10. Garder le domaine encapsulé
 
-Le domaine appris au chapitre 2 doit rester protecteur.
+Le domaine appris plus tôt doit rester protecteur.
 
 ```csharp
-public class Order
+public sealed class Order
 {
     private readonly List<OrderItem> _items = [];
 
@@ -291,7 +269,6 @@ public class Order
 
     private Order()
     {
-        // utilisé par EF Core
     }
 
     public Order(Guid customerId)
@@ -302,11 +279,22 @@ public class Order
         CreatedAt = DateTimeOffset.UtcNow;
     }
 
-    public void AddItem(OrderItem item)
+    public void AddItem(
+        Guid productId,
+        string productName,
+        decimal unitPrice,
+        int quantity)
     {
         if (Status != OrderStatus.Draft)
             throw new InvalidOperationException(
                 "A confirmed order cannot be modified.");
+
+        var item = new OrderItem(
+            Id,
+            productId,
+            productName,
+            unitPrice,
+            quantity);
 
         _items.Add(item);
     }
@@ -322,36 +310,61 @@ public class Order
 }
 ```
 
-### Pourquoi des setters privés ?
-
-EF Core peut mapper des propriétés avec setters privés. Le code applicatif ne reçoit pas pour autant le droit de les modifier arbitrairement.
-
-### Pourquoi un constructeur privé ?
-
-Il donne à EF une voie simple de matérialisation sans exposer un constructeur métier incomplet aux consommateurs.
-
-Ce n'est pas la seule stratégie possible, mais elle est facile à comprendre pour ce workbook.
+La commande crée elle-même ses lignes. Une ligne appartenant à cette commande reçoit donc immédiatement le bon `OrderId`.
 
 ---
 
-# 11. Mapper la collection privée `_items`
-
-Le but est de **ne pas remplacer** :
+# 11. `OrderItem` et la relation
 
 ```csharp
-private readonly List<OrderItem> _items = [];
-public IReadOnlyCollection<OrderItem> Items => _items;
+public sealed class OrderItem
+{
+    public Guid Id { get; private set; }
+    public Guid OrderId { get; private set; }
+    public Guid ProductId { get; private set; }
+    public string ProductName { get; private set; } = string.Empty;
+    public decimal UnitPrice { get; private set; }
+    public int Quantity { get; private set; }
+
+    public decimal Subtotal => UnitPrice * Quantity;
+
+    private OrderItem()
+    {
+    }
+
+    internal OrderItem(
+        Guid orderId,
+        Guid productId,
+        string productName,
+        decimal unitPrice,
+        int quantity)
+    {
+        if (string.IsNullOrWhiteSpace(productName))
+            throw new ArgumentException(
+                "Product name is required.",
+                nameof(productName));
+
+        if (unitPrice < 0)
+            throw new ArgumentOutOfRangeException(nameof(unitPrice));
+
+        if (quantity <= 0)
+            throw new ArgumentOutOfRangeException(nameof(quantity));
+
+        Id = Guid.NewGuid();
+        OrderId = orderId;
+        ProductId = productId;
+        ProductName = productName;
+        UnitPrice = unitPrice;
+        Quantity = quantity;
+    }
+}
 ```
 
-par :
+`internal` permet à `Order` de créer une ligne dans le même projet métier sans exposer ce constructeur comme API publique générale.
 
-```csharp
-public List<OrderItem> Items { get; set; } = [];
-```
+---
 
-juste pour satisfaire l'ORM.
-
-Configuration :
+# 12. Mapper la collection privée `_items`
 
 ```csharp
 protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -380,52 +393,18 @@ protected override void OnModelCreating(ModelBuilder modelBuilder)
 }
 ```
 
-Exemple cohérent d'`OrderItem` :
+Le domaine garde :
 
 ```csharp
-public class OrderItem
-{
-    public Guid Id { get; private set; }
-    public Guid OrderId { get; private set; }
-    public Guid ProductId { get; private set; }
-    public string ProductName { get; private set; } = string.Empty;
-    public decimal UnitPrice { get; private set; }
-    public int Quantity { get; private set; }
-
-    public decimal Subtotal => UnitPrice * Quantity;
-
-    private OrderItem()
-    {
-    }
-
-    public OrderItem(
-        Guid productId,
-        string productName,
-        decimal unitPrice,
-        int quantity)
-    {
-        if (unitPrice < 0)
-            throw new ArgumentOutOfRangeException(nameof(unitPrice));
-
-        if (quantity <= 0)
-            throw new ArgumentOutOfRangeException(nameof(quantity));
-
-        Id = Guid.NewGuid();
-        ProductId = productId;
-        ProductName = productName;
-        UnitPrice = unitPrice;
-        Quantity = quantity;
-    }
-}
+private readonly List<OrderItem> _items = [];
+public IReadOnlyCollection<OrderItem> Items => _items;
 ```
 
-### Point pédagogique important
-
-L'ORM doit s'adapter au modèle lorsque c'est raisonnable ; ne détruis pas l'encapsulation uniquement pour obtenir une convention plus facile à mapper.
+Il n'est pas nécessaire de réouvrir un setter public simplement pour satisfaire l'ORM.
 
 ---
 
-# 12. Créer et sauvegarder
+# 13. Créer et sauvegarder
 
 ```csharp
 var order = new Order(customerId);
@@ -434,13 +413,41 @@ dbContext.Orders.Add(order);
 await dbContext.SaveChangesAsync(cancellationToken);
 ```
 
-`Add` marque l'entité comme nouvelle dans le contexte. L'écriture réelle se produit à `SaveChangesAsync`.
+`Add` marque l'entité comme nouvelle. L'écriture réelle se produit à `SaveChangesAsync`.
 
-`AddAsync` existe mais n'est pas à enseigner comme réflexe par défaut : son intérêt asynchrone concerne surtout certains générateurs de valeurs spéciaux.
+`AddAsync` existe, mais n'est pas le réflexe par défaut pour une entité classique dont la clé est déjà disponible côté application.
 
 ---
 
-# 13. Lire
+# 14. Sauvegarder une modification existante
+
+```csharp
+var order = await dbContext.Orders
+    .Include(x => x.Items)
+    .FirstAsync(x => x.Id == id, cancellationToken);
+
+order.Confirm();
+
+await dbContext.SaveChangesAsync(cancellationToken);
+```
+
+Le change tracker voit que `Status` a changé, mais **la base n'est modifiée qu'au `SaveChangesAsync`**.
+
+Dans notre repository pédagogique, cette frontière reste explicite :
+
+```csharp
+public Task SaveChangesAsync(
+    CancellationToken cancellationToken)
+{
+    return _dbContext.SaveChangesAsync(cancellationToken);
+}
+```
+
+L'implémentation mémoire peut faire de cette méthode un no-op.
+
+---
+
+# 15. Lire et charger les relations
 
 ```csharp
 var order = await dbContext.Orders
@@ -450,19 +457,33 @@ var order = await dbContext.Orders
         cancellationToken);
 ```
 
-La syntaxe ressemble à LINQ sur collections, mais ici EF Core analyse l'expression et traduit ce qu'il sait traduire vers SQL.
+La syntaxe ressemble à LINQ sur collections, mais EF Core analyse l'expression et traduit ce qu'il sait traduire vers SQL.
+
+### Eager loading
+
+```csharp
+.Include(x => x.Items)
+```
+
+### Explicit loading
+
+Charger volontairement une navigation plus tard via le contexte.
+
+### Lazy loading
+
+Charger une navigation au moment où elle est accédée, si ce mécanisme a été explicitement configuré.
+
+Le lazy loading peut rendre le nombre réel de requêtes moins visible.
 
 ---
 
-# 14. `IEnumerable<T>` vs `IQueryable<T>`
+# 16. `IEnumerable<T>` vs `IQueryable<T>`
 
 `IEnumerable<T>` exprime surtout :
 
 > cette séquence peut être énumérée.
 
-Cela ne veut pas dire automatiquement « `List<T>` déjà en mémoire ».
-
-`IQueryable<T>` transporte en plus une représentation de la requête qu'un provider peut analyser.
+`IQueryable<T>` transporte en plus une représentation de requête qu'un provider peut analyser.
 
 ```text
 Expression LINQ
@@ -481,7 +502,7 @@ var query = dbContext.Orders
     .Take(10);
 ```
 
-La requête n'est généralement pas encore envoyée.
+La requête n'est généralement pas encore exécutée.
 
 ```csharp
 var orders = await query.ToListAsync(cancellationToken);
@@ -491,7 +512,7 @@ matérialise le résultat.
 
 ---
 
-# 15. Ne pas matérialiser trop tôt
+# 17. Ne pas matérialiser trop tôt
 
 À éviter si on veut filtrer en base :
 
@@ -507,7 +528,7 @@ var expensive = all
 
 Toutes les commandes ont déjà été chargées.
 
-Mieux : exprimer un calcul traduisible dans la requête :
+Mieux :
 
 ```csharp
 var expensive = await dbContext.Orders
@@ -516,11 +537,11 @@ var expensive = await dbContext.Orders
     .ToListAsync(cancellationToken);
 ```
 
-Ici le provider peut traduire l'agrégation vers SQL.
+Le provider peut traduire le calcul vers SQL.
 
 ---
 
-# 16. Voir le SQL avec `ToQueryString()`
+# 18. Voir le SQL avec `ToQueryString()`
 
 ```csharp
 var query = dbContext.Orders
@@ -531,30 +552,15 @@ var query = dbContext.Orders
 Console.WriteLine(query.ToQueryString());
 ```
 
-### Exercice
-
-1. ajoute un `Where` ;
-2. ajoute un `Select` ;
-3. affiche le SQL ;
-4. matérialise trop tôt volontairement ;
-5. observe quelle partie n'existe plus dans le SQL.
+Exercice : ajoute un `Where`, un `Select`, inspecte le SQL, puis matérialise volontairement trop tôt et compare.
 
 ---
 
-# 17. Tracking
+# 19. Tracking et `AsNoTracking()`
 
-```csharp
-var order = await dbContext.Orders
-    .Include(x => x.Items)
-    .FirstAsync(x => x.Id == id, cancellationToken);
+EF suit par défaut les entités chargées afin de détecter leurs modifications.
 
-order.Confirm();
-await dbContext.SaveChangesAsync(cancellationToken);
-```
-
-EF suit les entités chargées et détecte les changements.
-
-Lecture seule :
+Pour une lecture seule :
 
 ```csharp
 var orders = await dbContext.Orders
@@ -562,31 +568,11 @@ var orders = await dbContext.Orders
     .ToListAsync(cancellationToken);
 ```
 
-`AsNoTracking()` réduit le travail du change tracker quand les entités ne seront pas modifiées puis sauvegardées.
+`AsNoTracking()` évite une partie du travail du change tracker lorsque les entités ne seront pas modifiées puis sauvegardées.
 
 ---
 
-# 18. Charger les relations
-
-### Eager loading
-
-```csharp
-.Include(x => x.Items)
-```
-
-### Explicit loading
-
-Charger volontairement une navigation plus tard via le contexte.
-
-### Lazy loading
-
-Charger une navigation au moment où elle est accédée, si l'application a explicitement configuré ce mécanisme.
-
-Le lazy loading n'est pas activé automatiquement et peut masquer le nombre réel de requêtes.
-
----
-
-# 19. Migrations
+# 20. Migrations
 
 Créer :
 
@@ -612,7 +598,7 @@ Les migrations font partie du code versionné du projet.
 
 ---
 
-# 20. N+1
+# 21. N+1
 
 Scénario :
 
@@ -622,7 +608,7 @@ Scénario :
 = 101 requêtes
 ```
 
-Le problème n'est pas la propriété de navigation en elle-même. Il apparaît lorsqu'une stratégie de chargement déclenche des requêtes répétées.
+Le problème vient d'une stratégie de chargement qui déclenche des requêtes répétées, pas de la simple présence d'une navigation.
 
 Pose-toi toujours :
 
@@ -634,7 +620,7 @@ Pose-toi toujours :
 
 ---
 
-# 21. Projection : lire juste ce dont on a besoin
+# 22. Projection : lire juste ce dont on a besoin
 
 ```csharp
 public record OrderSummary(
@@ -655,45 +641,46 @@ var summariesQuery = dbContext.Orders
     .Take(20);
 ```
 
-Observe d'abord :
+Observe :
 
 ```csharp
 Console.WriteLine(summariesQuery.ToQueryString());
 ```
 
-Puis :
+Puis matérialise :
 
 ```csharp
 var summaries = await summariesQuery
     .ToListAsync(cancellationToken);
 ```
 
-Cette requête ne dépend pas de `Order.Total` comme propriété C# calculée ; elle exprime directement le calcul traduisible.
+Cette requête exprime directement un calcul que le provider peut traduire, au lieu de dépendre de la propriété C# `Order.Total` non mappée.
 
 ---
 
 ## Exercice — mapping + migration
 
-À partir du modèle encapsulé :
-
-1. configure `Order` et `OrderItem` dans `OnModelCreating` ;
+1. configure `Order` et `OrderItem` ;
 2. génère `InitialCreate` ;
-3. vérifie que **la table `Orders` ne contient pas de colonne `Total`** ;
-4. vérifie que `OrderItems` contient `UnitPrice` et `Quantity` ;
-5. vérifie la foreign key `OrderId` ;
-6. applique la migration ;
-7. crée une commande, relis-la avec ses items ;
-8. affiche une projection `OrderSummary` et son SQL.
+3. vérifie que `Orders` ne contient pas de colonne `Total` ;
+4. vérifie `OrderItems.OrderId`, `UnitPrice` et `Quantity` ;
+5. applique la migration ;
+6. crée une commande avec un item ;
+7. relis-la avec ses items ;
+8. confirme-la puis appelle `SaveChangesAsync` ;
+9. relis-la dans un nouveau scope et vérifie le statut ;
+10. affiche le SQL d'une projection `OrderSummary`.
 
 <details>
 <summary>Critères de réussite</summary>
 
 - le domaine garde sa collection privée ;
+- chaque `OrderItem` possède le bon `OrderId` dès sa création ;
 - EF remplit la navigation via le backing field ;
 - `OrderItem.UnitPrice` est persisté ;
 - `Order.Total` reste un calcul du domaine ;
-- les lectures de résumé calculent le total dans une expression traduisible ;
-- la base contient une vraie relation `Orders` → `OrderItems`.
+- une modification n'est persistée qu'après `SaveChangesAsync` ;
+- les lectures de résumé calculent le total dans une expression traduisible.
 </details>
 
 ---
@@ -711,12 +698,4 @@ mapping
 requêtes
 ```
 
-pas :
-
-```text
-règles de confirmation
-prix historique
-calcul métier d'un item
-```
-
-C'est le test concret du découplage construit depuis le début du workbook.
+Le domaine conserve ses règles : confirmation, prix historique, quantité et calcul du total.
