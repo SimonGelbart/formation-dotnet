@@ -113,12 +113,9 @@ public sealed class FakeOrderRepository : IOrderRepository
 {
     private readonly Dictionary<Guid, Order> _orders = [];
 
-    public Task AddAsync(
-        Order order,
-        CancellationToken cancellationToken)
+    public void Add(Order order)
     {
         _orders[order.Id] = order;
-        return Task.CompletedTask;
     }
 
     public Task<Order?> GetByIdAsync(
@@ -146,7 +143,7 @@ public sealed class FakeOrderRepository : IOrderRepository
 }
 ```
 
-Dans ce fake, les objets sont déjà modifiés en mémoire : `SaveChangesAsync` n'a rien à écrire. Le même contrat pourra pourtant être implémenté par EF Core.
+Dans ce fake, `Add` et les modifications changent déjà les objets en mémoire. `SaveChangesAsync` n'a donc rien à écrire.
 
 ## Mock
 
@@ -353,7 +350,7 @@ Une connexion SQLite in-memory gardée ouverte signifie aussi que les données p
 
 Un test doit pouvoir s'exécuter seul ou avec les autres et donner le même résultat.
 
-Ajoute un helper simple :
+Ajoute cette méthode à `OrderApiFactory` :
 
 ```csharp
 public async Task ResetDatabaseAsync()
