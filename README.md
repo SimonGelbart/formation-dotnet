@@ -176,17 +176,7 @@ Objectif : remettre à niveau un développeur ayant déjà une expérience front
 
 L'objectif n'est pas de mémoriser les patterns, mais de comprendre le problème auquel chacun répond et les compromis qu'il introduit.
 
-## 8. Introduction à la sécurité applicative
-
-- Authentification vs autorisation
-- identité, rôles et claims
-- principe d'un token Bearer / JWT
-- `[Authorize]`
-- ne jamais stocker de secrets dans le dépôt
-
-Cette partie reste volontairement introductive dans le cadre d'une remise à niveau.
-
-## 9. Projet fil rouge
+## 8. Projet fil rouge
 
 Construire progressivement une petite API .NET permettant de mettre les notions en pratique plutôt que de les apprendre uniquement de manière théorique.
 
@@ -210,7 +200,6 @@ Exemple : API de gestion de commandes avec :
 - tests unitaires
 - tests d'intégration
 - séparation en couches
-- authentification / autorisation en fin de parcours
 
 ## Approche pédagogique
 
@@ -232,6 +221,8 @@ L'objectif n'est pas d'apprendre des règles ou des patterns par cœur, mais de 
 
 À garder pour une seconde étape, une fois les bases précédentes maîtrisées :
 
+- authentification et autorisation
+- JWT / Bearer tokens / claims
 - Docker
 - Redis / cache distribué
 - messaging (`RabbitMQ`, `Kafka`, etc.)
