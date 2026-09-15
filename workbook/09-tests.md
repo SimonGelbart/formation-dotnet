@@ -10,8 +10,8 @@
 - utiliser un fake simple ;
 - comprendre quand un mock est utile ;
 - lancer l'API avec `WebApplicationFactory` ;
-- remplacer une infrastructure dans un test ;
 - tester EF Core avec une base relationnelle SQLite in-memory ;
+- isoler les données entre scénarios de test ;
 - comprendre les limites d'EF Core `InMemory` ;
 - choisir une frontière de test en fonction du risque à couvrir.
 
@@ -21,13 +21,13 @@
 
 Un test automatisé vérifie qu'un comportement important reste vrai lorsque le code évolue.
 
-Exemple de règle :
+Exemple :
 
 > une commande vide ne peut pas être confirmée.
 
 Le test devient une forme de documentation exécutable.
 
-Un test utile décrit surtout un **comportement observable**. Il ne doit pas nécessairement reproduire toute la structure interne du code.
+Un test utile décrit surtout un **comportement observable**, pas tous les détails internes du code.
 
 ---
 
@@ -54,8 +54,6 @@ Act     → agir
 Assert  → vérifier
 ```
 
-Tu n'as pas besoin d'écrire les commentaires dans chaque test si la structure est déjà claire.
-
 ---
 
 # 3. Commencer par les objets simples
@@ -65,43 +63,42 @@ Tu n'as pas besoin d'écrire les commentaires dans chaque test si la structure e
 public void AddItem_UpdatesTotal()
 {
     var order = new Order(Guid.NewGuid());
-    var item = new OrderItem(
+
+    order.AddItem(
         Guid.NewGuid(),
         "Keyboard",
         10m,
         2);
-
-    order.AddItem(item);
 
     Assert.Equal(20m, order.Total);
 }
 ```
 
-Ce test :
+Ce test n'a besoin ni de DI, ni de mock, ni de base de données.
 
-- n'a pas besoin de DI ;
-- n'a pas besoin de mock ;
-- n'a pas besoin de base de données ;
-- décrit directement une règle métier.
-
-### Test historique important
+### Test du prix historique
 
 ```csharp
 [Fact]
-public void OrderItem_KeepsCapturedPrice()
+public void AddItem_CapturesUnitPrice()
 {
-    var item = new OrderItem(
+    var order = new Order(Guid.NewGuid());
+
+    order.AddItem(
         Guid.NewGuid(),
         "Keyboard",
         10m,
         2);
 
+    var item = Assert.Single(order.Items);
+
     Assert.Equal(10m, item.UnitPrice);
     Assert.Equal(20m, item.Subtotal);
+    Assert.Equal(order.Id, item.OrderId);
 }
 ```
 
-L'item conserve le prix capturé au moment de la commande.
+Ce test documente deux décisions : le prix est capturé et la ligne appartient immédiatement à la bonne commande.
 
 ---
 
@@ -140,19 +137,20 @@ public sealed class FakeOrderRepository : IOrderRepository
 
         return Task.FromResult(result);
     }
+
+    public Task SaveChangesAsync(
+        CancellationToken cancellationToken)
+    {
+        return Task.CompletedTask;
+    }
 }
 ```
 
-Puis :
-
-```csharp
-var repository = new FakeOrderRepository();
-var service = new OrderService(repository, ...);
-```
+Dans ce fake, les objets sont déjà modifiés en mémoire : `SaveChangesAsync` n'a rien à écrire. Le même contrat pourra pourtant être implémenté par EF Core.
 
 ## Mock
 
-Un mock est utile lorsqu'on souhaite configurer précisément un collaborateur ou vérifier une interaction :
+Un mock est utile lorsqu'on veut configurer précisément un collaborateur ou vérifier une interaction :
 
 ```text
 « si le catalogue retourne ce produit... »
@@ -161,9 +159,9 @@ Un mock est utile lorsqu'on souhaite configurer précisément un collaborateur o
 
 ### Piège
 
-Un test qui vérifie chaque appel interne peut devenir très fragile.
+Un test qui vérifie chaque appel interne peut devenir fragile.
 
-> Vérifie le comportement observable dès que possible ; vérifie les interactions lorsque l'interaction est elle-même importante.
+> Vérifie le comportement observable dès que possible ; vérifie les interactions lorsque l'interaction elle-même est importante.
 
 ---
 
@@ -177,8 +175,6 @@ public class OrderService
     private readonly SqlOrderRepository _repository = new();
 }
 ```
-
-Le test doit potentiellement utiliser SQL.
 
 Avec injection :
 
@@ -274,27 +270,7 @@ public class OrdersApiTests
 }
 ```
 
-Ce test traverse réellement :
-
-```text
-HttpClient
- ↓
-routing
- ↓
-model binding
- ↓
-DI
- ↓
-Controller
- ↓
-service
-```
-
-Il apporte donc plus d'information qu'un test faisant directement :
-
-```csharp
-new OrdersController(...)
-```
+Ce test traverse réellement routing, binding, DI, Controller et service.
 
 ---
 
@@ -302,7 +278,7 @@ new OrdersController(...)
 
 Le provider EF Core `InMemory` n'est **pas une base relationnelle**.
 
-Il peut se comporter différemment concernant notamment :
+Il peut se comporter différemment concernant :
 
 - contraintes relationnelles ;
 - transactions ;
@@ -314,19 +290,17 @@ Donc :
 
 > un test qui passe avec EF `InMemory` ne prouve pas qu'une requête fonctionnera avec une vraie base relationnelle.
 
-SQLite in-memory est souvent plus intéressant pour ce workbook car SQLite est une vraie base relationnelle.
+SQLite in-memory est plus pertinent pour ce workbook car SQLite est une vraie base relationnelle.
 
-Attention cependant : SQLite n'est pas identique à SQL Server ou PostgreSQL. Pour des comportements spécifiques au moteur de production, le test le plus fidèle utilise ce moteur.
+Il reste différent de SQL Server ou PostgreSQL : pour un comportement spécifique au moteur de production, teste avec ce moteur.
 
 ---
 
-# 9. Une vraie factory d'intégration avec SQLite in-memory
+# 9. Factory d'intégration avec SQLite in-memory
 
-Le principe important avec SQLite `:memory:` est le suivant :
+La base SQLite `:memory:` vit tant que sa connexion reste ouverte.
 
-> la base vit tant que la connexion reste ouverte.
-
-Dans le projet de tests, ajoute si nécessaire :
+Ajoute si nécessaire :
 
 ```bash
 dotnet package add Microsoft.EntityFrameworkCore.Sqlite
@@ -350,13 +324,6 @@ public sealed class OrderApiFactory
             if (dbOptions is not null)
                 services.Remove(dbOptions);
 
-            var existingConnection = services.SingleOrDefault(
-                descriptor => descriptor.ServiceType ==
-                    typeof(DbConnection));
-
-            if (existingConnection is not null)
-                services.Remove(existingConnection);
-
             services.AddSingleton<DbConnection>(_ =>
             {
                 var connection = new SqliteConnection(
@@ -374,30 +341,48 @@ public sealed class OrderApiFactory
                 options.UseSqlite(connection);
             });
         });
-
-        builder.UseEnvironment("Development");
     }
 }
 ```
 
-### Initialiser le schéma
+---
 
-Dans le setup du test :
+# 10. Isoler les tests
+
+Une connexion SQLite in-memory gardée ouverte signifie aussi que les données peuvent survivre entre plusieurs tests utilisant la même fixture.
+
+Un test doit pouvoir s'exécuter seul ou avec les autres et donner le même résultat.
+
+Ajoute un helper simple :
 
 ```csharp
-await using var scope = factory.Services.CreateAsyncScope();
+public async Task ResetDatabaseAsync()
+{
+    await using var scope = Services.CreateAsyncScope();
 
-var dbContext = scope.ServiceProvider
-    .GetRequiredService<AppDbContext>();
+    var db = scope.ServiceProvider
+        .GetRequiredService<AppDbContext>();
 
-await dbContext.Database.EnsureCreatedAsync();
+    await db.Database.EnsureDeletedAsync();
+    await db.Database.EnsureCreatedAsync();
+}
 ```
 
-Pour une suite réelle, centralise cette initialisation dans la fixture plutôt que de la recopier dans chaque test.
+Au début d'un scénario :
+
+```csharp
+await _factory.ResetDatabaseAsync();
+```
+
+Puis initialise seulement les données nécessaires au test.
+
+### Idée clé
+
+> Un test ne doit pas dépendre de l'ordre dans lequel les autres tests ont été exécutés.
 
 ---
 
-# 10. Test de bout en bout simple
+# 11. Test de bout en bout simple
 
 ```csharp
 public sealed class OrdersIntegrationTests
@@ -415,7 +400,7 @@ public sealed class OrdersIntegrationTests
     [Fact]
     public async Task UnknownOrder_Returns404()
     {
-        await EnsureDatabaseAsync();
+        await _factory.ResetDatabaseAsync();
 
         var response = await _client.GetAsync(
             $"/orders/{Guid.NewGuid()}");
@@ -424,24 +409,15 @@ public sealed class OrdersIntegrationTests
             HttpStatusCode.NotFound,
             response.StatusCode);
     }
-
-    private async Task EnsureDatabaseAsync()
-    {
-        await using var scope =
-            _factory.Services.CreateAsyncScope();
-
-        var dbContext = scope.ServiceProvider
-            .GetRequiredService<AppDbContext>();
-
-        await dbContext.Database.EnsureCreatedAsync();
-    }
 }
 ```
 
 Puis ajoute un scénario plus significatif :
 
 ```text
-POST /orders
+reset DB
+→ seed du catalogue nécessaire
+→ POST /orders
 → 201
 → récupérer Location
 → GET de cette URL
@@ -457,9 +433,7 @@ HTTP + sérialisation + routing + DI + service + EF Core + SQLite
 
 ---
 
-# 11. Quelle infrastructure remplacer ?
-
-`WebApplicationFactory` permet de remplacer des dépendances.
+# 12. Quelle infrastructure remplacer ?
 
 Si tu testes seulement :
 
@@ -477,15 +451,13 @@ requêtes EF + mapping + contraintes relationnelles
 
 remplacer EF par un fake détruit précisément la frontière que tu voulais vérifier.
 
-### Question à toujours poser
+Pose toujours la question :
 
 > Quel risque ce test est-il censé détecter ?
 
-La réponse détermine quelles dépendances doivent être réelles.
-
 ---
 
-# 12. Plan de tests du projet fil rouge
+# 13. Plan de tests du projet fil rouge
 
 ## Domaine
 
@@ -493,13 +465,15 @@ La réponse détermine quelles dépendances doivent être réelles.
 - commande vide non confirmable ;
 - commande confirmée non modifiable ;
 - total correct ;
-- prix unitaire capturé et stable.
+- prix unitaire capturé et stable ;
+- `OrderId` de la ligne cohérent.
 
 ## Service
 
 - commande créée et enregistrée ;
 - produit absent géré ;
 - ajout d'un item capture le prix courant ;
+- modification suivie de `SaveChangesAsync` ;
 - notification demandée au bon moment.
 
 ## API
@@ -513,7 +487,8 @@ La réponse détermine quelles dépendances doivent être réelles.
 
 - relation Order/OrderItems correcte ;
 - projection de total traduite et exécutable ;
-- mapping de la collection privée fonctionnel.
+- mapping de la collection privée fonctionnel ;
+- modification persistée après `SaveChangesAsync`.
 
 ---
 
@@ -532,5 +507,5 @@ Pour chacun, écris une phrase :
 <details>
 <summary>Critères de réussite</summary>
 
-Les trois tests ne doivent pas vérifier exactement les mêmes détails. Le test domaine vérifie l'invariant, le test service l'orchestration, et le test HTTP le contrat et l'intégration des composants.
+Les trois tests ne doivent pas vérifier exactement les mêmes détails. Le test domaine vérifie l'invariant, le test service l'orchestration et la sauvegarde, et le test HTTP le contrat et l'intégration des composants.
 </details>
