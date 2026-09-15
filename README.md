@@ -67,28 +67,126 @@ Objectif : remettre à niveau un développeur ayant déjà une expérience front
   - `Task.WhenAll`
   - `CancellationToken`
 
-## 4. Passer au développement backend .NET
+## 4. Comprendre l'écosystème .NET
 
+- .NET SDK vs runtime
+- Structure d'une solution et d'un projet
+- `.sln` / `.csproj`
+- Références entre projets (`ProjectReference`)
+- Commandes principales du CLI :
+  - `dotnet new`
+  - `dotnet restore`
+  - `dotnet build`
+  - `dotnet run`
+  - `dotnet test`
+- NuGet
+  - ajouter et supprimer un package
+  - `PackageReference`
+  - restauration des dépendances
+  - versions et dépendances transitives
+
+## 5. Passer au développement backend avec ASP.NET Core
+
+- `Program.cs` et démarrage de l'application
+- Pipeline HTTP
+- Middleware
+- Routing
+- Controllers et endpoints
+- Introduction aux Minimal APIs
+- DTOs
+- Model binding
+- Validation des entrées
+- Codes de statut HTTP
+- Gestion globale des erreurs
 - Conteneur d'injection de dépendances .NET
 - Lifetimes : `Transient`, `Scoped`, `Singleton`
+
+### Configuration et logging
+
+- `appsettings.json`
+- configuration par environnement
+- variables d'environnement
+- `IConfiguration`
+- Options pattern : `IOptions<T>`
+- gestion des secrets
+- `ILogger<T>`
+
+### Appels HTTP sortants
+
+- `HttpClient`
+- sérialisation / désérialisation JSON
+- `HttpClientFactory`
+- parallèle avec `fetch` / Axios côté front
+
+## 6. Persistance des données : SQL et EF Core
+
+### Fondamentaux SQL
+
+- tables et colonnes
+- clés primaires et étrangères
+- relations
+- jointures
+- index
+- transactions
+
+### Entity Framework Core
+
+- rôle d'un ORM
+- `DbContext`
+- `DbSet<T>`
+- configuration d'EF Core avec la DI
+- migrations
+- CRUD
+- relations et propriétés de navigation
+- requêtes LINQ sur la base
+- `IEnumerable<T>` vs `IQueryable<T>`
+- tracking vs `AsNoTracking()`
+- `SaveChangesAsync()`
+- chargement des données liées
+- attention aux performances et au nombre de requêtes générées
+
+## 7. Tests, architecture et conception
+
+### Tests
+
 - Tests unitaires
   - Arrange / Act / Assert
   - fake / mock
   - intérêt du découplage pour les tests
-- Architecture et séparation des responsabilités
-  - Controller
-  - Service
-  - Repository
-  - Presentation / Application / Domain / Infrastructure
-- Couplage et cohésion
-- Design patterns appliqués
-  - Strategy
-  - Factory
-  - Decorator
-  - Adapter
-  - Repository
+- Tests d'intégration
+- Différence entre test unitaire et test d'intégration
 
-## 5. Projet fil rouge
+### Architecture et séparation des responsabilités
+
+- Controller
+- Service
+- Repository
+- Presentation / Application / Domain / Infrastructure
+- Couplage et cohésion
+- Où placer la logique métier
+- Éviter d'ajouter des couches sans besoin réel
+
+### Design patterns appliqués
+
+- Strategy
+- Factory
+- Decorator
+- Adapter
+- Repository
+
+L'objectif n'est pas de mémoriser les patterns, mais de comprendre le problème auquel chacun répond et les compromis qu'il introduit.
+
+## 8. Introduction à la sécurité applicative
+
+- Authentification vs autorisation
+- identité, rôles et claims
+- principe d'un token Bearer / JWT
+- `[Authorize]`
+- ne jamais stocker de secrets dans le dépôt
+
+Cette partie reste volontairement introductive dans le cadre d'une remise à niveau.
+
+## 9. Projet fil rouge
 
 Construire progressivement une petite API .NET permettant de mettre les notions en pratique plutôt que de les apprendre uniquement de manière théorique.
 
@@ -96,15 +194,23 @@ Exemple : API de gestion de commandes avec :
 
 - endpoints HTTP
 - Controllers
+- DTOs et validation
 - Services
 - Repositories
 - interfaces
 - injection de dépendances
+- configuration et logging
 - LINQ
-- async/await
+- async / await
+- EF Core
+- migrations
+- base SQL
 - gestion des erreurs
-- tests
+- appel éventuel à une API externe via `HttpClient`
+- tests unitaires
+- tests d'intégration
 - séparation en couches
+- authentification / autorisation en fin de parcours
 
 ## Approche pédagogique
 
@@ -115,7 +221,21 @@ Toujours partir autant que possible d'un parallèle avec le front-end :
 - `Array.some` → `Any`
 - `Array.every` → `All`
 - `Promise<T>` → `Task<T>`
+- `fetch` / Axios → `HttpClient`
 - interface TypeScript → interface C#, en explicitant leurs différences
 - immutabilité du state front → records et objets immuables
+- configuration front par environnement → configuration ASP.NET Core
 
 L'objectif n'est pas d'apprendre des règles ou des patterns par cœur, mais de comprendre les problèmes qu'ils permettent de résoudre et les compromis qu'ils impliquent.
+
+## Hors périmètre initial
+
+À garder pour une seconde étape, une fois les bases précédentes maîtrisées :
+
+- Docker
+- Redis / cache distribué
+- messaging (`RabbitMQ`, `Kafka`, etc.)
+- microservices
+- CQRS / MediatR
+- observabilité avancée
+- Kubernetes / cloud
