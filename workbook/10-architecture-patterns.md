@@ -432,20 +432,20 @@ public interface IOrderRepository
         Guid id,
         CancellationToken cancellationToken);
 
-    Task AddAsync(
-        Order order,
-        CancellationToken cancellationToken);
+    void Add(Order order);
 
     Task SaveChangesAsync(
         CancellationToken cancellationToken);
 }
 ```
 
-`SaveChangesAsync` rend explicite la frontière :
+`Add` reste synchrone parce qu'il ajoute l'objet au stockage local ou au change tracker. `SaveChangesAsync` représente la vraie sauvegarde I/O.
+
+La frontière est explicite :
 
 ```text
 charger
-→ modifier le domaine
+→ modifier
 → sauvegarder
 ```
 
@@ -504,6 +504,6 @@ Tu dois pouvoir expliquer :
 - pourquoi une interface pour chaque classe est souvent du bruit ;
 - quel problème concret Strategy, Factory, Adapter et Decorator résolvent ;
 - pourquoi un Repository autour d'EF Core mérite une justification ;
-- pourquoi `SaveChangesAsync` est explicite dans le repository du workbook.
+- pourquoi `Add` peut rester synchrone alors que `SaveChangesAsync` est asynchrone.
 
 Le chapitre suivant reprend **l'Order API entière** et applique ces décisions au fil de l'évolution du projet.
