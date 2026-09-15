@@ -60,13 +60,11 @@ Order
 → calculer le total
 ```
 
-Ces comportements décrivent le même concept métier.
-
 ## Couplage
 
 Deux composants sont couplés lorsque l'un dépend de l'autre.
 
-Le but n'est pas d'avoir **zéro couplage**. Une application doit relier des composants.
+Le but n'est pas d'avoir zéro couplage. Une application doit relier ses composants.
 
 On cherche plutôt :
 
@@ -89,21 +87,14 @@ public async Task<IActionResult> Confirm(
     CancellationToken cancellationToken)
 {
     // lecture DB
-    // 30 lignes de validation métier
+    // validation métier
     // changement de statut
     // notification
     // mapping HTTP
 }
 ```
 
-Le Controller mélange :
-
-```text
-HTTP
-application
-métier
-infrastructure
-```
+Le Controller mélange HTTP, application, métier et infrastructure.
 
 Une séparation plus claire :
 
@@ -118,8 +109,6 @@ et dans le domaine :
 ```csharp
 order.Confirm();
 ```
-
-### Règle de réflexion
 
 Demande-toi :
 
@@ -148,7 +137,7 @@ OrderApi.Infrastructure
 OrderApi.Tests
 ```
 
-### Exemple de responsabilités
+Responsabilités possibles :
 
 ```text
 Api
@@ -164,25 +153,7 @@ Infrastructure
 → EF Core, fichiers, clients externes
 ```
 
-### Le sens des références compte
-
-Une séparation en quatre projets ne sert à rien si tout référence tout.
-
-Un graphe possible :
-
-```text
-Api ─────────────→ Application
- │                     ↓
- │                   Domain
- │
- └──────────────→ Infrastructure
-                       ↓
-                     Domain
-```
-
-L'infrastructure peut implémenter des contrats définis plus haut dans l'application ou le domaine selon le découpage choisi.
-
-Il n'existe pas une seule architecture obligatoire ; l'important est de pouvoir **expliquer le sens des dépendances**.
+Le sens des références compte. Une séparation en quatre projets ne sert à rien si tout référence tout.
 
 ---
 
@@ -196,15 +167,7 @@ Meilleure question :
 
 > quel problème concret cette abstraction résout-elle ?
 
-Une abstraction ajoute aussi :
-
-- des fichiers ;
-- du mapping ;
-- de la navigation ;
-- du vocabulaire ;
-- de la maintenance.
-
-Si elle ne protège aucune frontière utile, elle peut être prématurée.
+Une abstraction ajoute aussi des fichiers, du mapping, de la navigation et de la maintenance.
 
 ---
 
@@ -212,17 +175,17 @@ Si elle ne protège aucune frontière utile, elle peut être prématurée.
 
 Avant de créer plusieurs projets, observe d'abord les symptômes :
 
-- les DTOs HTTP sont utilisés dans le domaine ;
-- EF Core est référencé dans toutes les classes ;
-- les Controllers contiennent du métier ;
-- la composition DI devient difficile à lire ;
-- les tests doivent connaître trop de détails techniques.
+- DTOs HTTP utilisés dans le domaine ;
+- EF Core référencé partout ;
+- Controllers contenant du métier ;
+- composition DI difficile à lire ;
+- tests connaissant trop de détails techniques.
 
 Puis déplace une responsabilité à la fois.
 
 ### Exercice
 
-Pour chaque extraction proposée, complète :
+Complète :
 
 ```text
 Je déplace __________ vers __________
@@ -265,8 +228,6 @@ Standard
 Express
 International
 ```
-
-Une cascade de `if` grossit dans le service.
 
 Contrat :
 
@@ -312,9 +273,7 @@ public sealed class ShippingCalculator
 }
 ```
 
-### Problème résolu
-
-> encapsuler des algorithmes interchangeables derrière un même contrat.
+**Strategy** encapsule des algorithmes interchangeables derrière un même contrat.
 
 ---
 
@@ -352,17 +311,9 @@ public sealed class ShippingStrategyFactory
 }
 ```
 
-### Nuance
+Une Factory vaut son coût lorsqu'elle encapsule une vraie décision ou une construction non triviale.
 
-Ceci n'a pas besoin d'une Factory :
-
-```csharp
-var product = new Product(...);
-```
-
-Une Factory vaut son coût lorsqu'elle encapsule une vraie décision ou construction complexe.
-
-Et elle ne doit pas devenir une manière détournée de reconstruire à la main tout le graphe que le conteneur DI sait déjà composer.
+Elle ne doit pas devenir une manière détournée de reconstruire à la main tout le graphe que le conteneur DI sait déjà composer.
 
 ---
 
@@ -422,9 +373,7 @@ ThirdPartyMailAdapter
 SDK tiers
 ```
 
-### Problème résolu
-
-> protéger notre application du contrat particulier d'un composant externe.
+**Adapter** protège l'application du contrat particulier d'un composant externe.
 
 ---
 
@@ -464,21 +413,7 @@ public sealed class LoggingOrderNotifier
 }
 ```
 
-Le Decorator implémente le **même contrat** et enveloppe un autre composant.
-
-```text
-OrderService
-    ↓
-IOrderNotifier
-    ↓
-LoggingOrderNotifier
-    ↓
-ThirdPartyMailAdapter
-```
-
-### Problème résolu
-
-> ajouter un comportement transversal autour d'un composant sans changer son contrat principal.
+Le Decorator implémente le même contrat et enveloppe un autre composant.
 
 ---
 
@@ -486,7 +421,9 @@ ThirdPartyMailAdapter
 
 ## Problème
 
-Le domaine ou l'application a besoin de retrouver et sauvegarder des objets sans dépendre partout d'EF Core.
+L'application veut retrouver et sauvegarder des commandes sans dépendre partout d'EF Core.
+
+Pour ce workbook, le contrat reste volontairement simple :
 
 ```csharp
 public interface IOrderRepository
@@ -498,16 +435,29 @@ public interface IOrderRepository
     Task AddAsync(
         Order order,
         CancellationToken cancellationToken);
+
+    Task SaveChangesAsync(
+        CancellationToken cancellationToken);
 }
 ```
 
+`SaveChangesAsync` rend explicite la frontière :
+
+```text
+charger
+→ modifier le domaine
+→ sauvegarder
+```
+
+Ce choix est pédagogique. Une autre architecture pourrait laisser l'application utiliser directement `DbContext` ou séparer cette responsabilité différemment.
+
 ### Nuance importante
 
-EF Core possède déjà `DbContext` et `DbSet<T>`, qui offrent des abstractions puissantes.
+EF Core possède déjà `DbContext` et `DbSet<T>`.
 
-Donc un repository supplémentaire n'est **pas automatiquement nécessaire**.
+Un repository supplémentaire n'est donc **pas automatiquement nécessaire**.
 
-Repository peu utile s'il ne fait que recopier EF :
+Évite le repository générique créé mécaniquement pour chaque table :
 
 ```text
 GetAll
@@ -517,21 +467,7 @@ Update
 Delete
 ```
 
-Un repository peut être plus pertinent lorsqu'il exprime des besoins du modèle :
-
-```csharp
-Task<Order?> GetForConfirmationAsync(...);
-Task<IReadOnlyCollection<OrderSummary>>
-    GetRecentForCustomerAsync(...);
-```
-
-La question n'est pas :
-
-> « est-ce que Repository est un bon pattern ? »
-
-mais :
-
-> « cette frontière apporte-t-elle quelque chose ici ? »
+Une frontière repository est plus intéressante lorsqu'elle correspond à un besoin réel de l'application.
 
 ---
 
@@ -567,6 +503,7 @@ Tu dois pouvoir expliquer :
 - ce qu'une séparation physique en projets change réellement ;
 - pourquoi une interface pour chaque classe est souvent du bruit ;
 - quel problème concret Strategy, Factory, Adapter et Decorator résolvent ;
-- pourquoi un Repository autour d'EF Core mérite une justification.
+- pourquoi un Repository autour d'EF Core mérite une justification ;
+- pourquoi `SaveChangesAsync` est explicite dans le repository du workbook.
 
 Le chapitre suivant reprend **l'Order API entière** et applique ces décisions au fil de l'évolution du projet.
