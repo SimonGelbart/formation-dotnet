@@ -6,12 +6,13 @@
 
 - utiliser `try`, `catch`, `finally` et `throw` ;
 - éviter les exceptions silencieusement avalées ;
-- comprendre le rôle de `IDisposable` et `using` ;
+- comprendre le rôle de `IDisposable`, `IAsyncDisposable`, `using` et `await using` ;
 - distinguer mémoire managée et ressources externes ;
 - comprendre `Task`, `Task<T>`, `async` et `await` ;
+- distinguer travail I/O-bound et CPU-bound ;
 - utiliser `Task.WhenAll` pour des opérations indépendantes ;
 - comprendre l'intérêt de `CancellationToken` ;
-- éviter les usages naïfs de `.Result` et `.Wait()`.
+- éviter les usages naïfs de `.Result`, `.Wait()`, `async void` et `Task.Run`.
 
 ---
 
@@ -47,7 +48,7 @@ finally
 }
 ```
 
-Le bloc `finally` est exécuté qu'il y ait ou non une exception.
+Le bloc `finally` est exécuté lors de la sortie du bloc `try`, qu'une exception ait été levée ou non, sauf situations exceptionnelles de terminaison brutale du processus.
 
 ### Mauvaise pratique
 
@@ -126,7 +127,7 @@ using var stream = File.OpenRead(path);
 
 À la sortie de la portée, `Dispose()` est appelé automatiquement.
 
-Forme longue équivalente conceptuellement :
+Forme longue :
 
 ```csharp
 using (var stream = File.OpenRead(path))
@@ -134,6 +135,16 @@ using (var stream = File.OpenRead(path))
     // utilisation du flux
 }
 ```
+
+### `IAsyncDisposable` et `await using`
+
+Certaines ressources ont une libération qui elle-même peut nécessiter une opération asynchrone.
+
+```csharp
+await using var resource = await OpenAsyncResource();
+```
+
+Le compilateur appelle alors `DisposeAsync()` à la fin de la portée.
 
 ### Checkpoint
 
@@ -177,6 +188,8 @@ GetUserAsync()
      User
 ```
 
+Un `Task` représente une opération qui peut être terminée maintenant ou plus tard. `await` permet d'en attendre le résultat sans bloquer volontairement le thread appelant pendant une attente asynchrone.
+
 ---
 
 ## 7. `async` / `await`
@@ -189,13 +202,71 @@ public async Task<User?> GetUserAsync(Guid id)
 }
 ```
 
-`await` permet d'attendre logiquement le résultat sans écrire une chaîne complexe de callbacks.
+`await` permet d'écrire une séquence asynchrone avec un flux de contrôle proche du code synchrone.
 
-Le mot clé `async` permet notamment l'utilisation de `await` et transforme la méthode en machine d'état asynchrone.
+Le mot clé `async` permet notamment l'utilisation de `await` et le compilateur transforme la méthode en machine d'état.
+
+### `async` n'est pas « nouveau thread »
+
+`await` ne signifie pas automatiquement :
+
+> « exécute cette opération sur un autre thread ».
+
+Pour une attente I/O, aucun thread n'a besoin de rester bloqué uniquement pour attendre la réponse distante.
 
 ---
 
-## 8. Pourquoi l'async est important en backend
+## 8. I/O-bound vs CPU-bound
+
+### I/O-bound
+
+Une grande partie du temps est passée à attendre un système externe :
+
+```text
+base de données
+HTTP
+fichier
+réseau
+```
+
+C'est le cas typique de l'async backend.
+
+```csharp
+var order = await dbContext.Orders.FirstAsync(...);
+```
+
+### CPU-bound
+
+Le processeur travaille réellement pendant une durée importante :
+
+```text
+compression
+calcul scientifique
+encodage
+traitement d'image
+```
+
+`async` ne rend pas magiquement ce calcul moins coûteux.
+
+### Ne pas emballer artificiellement les I/O dans `Task.Run`
+
+À éviter :
+
+```csharp
+await Task.Run(() => dbContext.Orders.ToList());
+```
+
+Si une API asynchrone existe :
+
+```csharp
+await dbContext.Orders.ToListAsync(cancellationToken);
+```
+
+utilise-la directement.
+
+---
+
+## 9. Pourquoi l'async est important en backend
 
 Une API passe beaucoup de temps à attendre :
 
@@ -208,13 +279,13 @@ Bloquer inutilement un thread pendant toute cette attente limite la capacité du
 
 L'async n'est donc pas principalement :
 
-> « rendre le code plus rapide ».
+> « rendre une opération individuelle plus rapide ».
 
-Il sert surtout à utiliser plus efficacement les ressources pendant les attentes d'I/O.
+Il sert surtout à utiliser plus efficacement les ressources pendant les attentes d'I/O et améliore la scalabilité du serveur.
 
 ---
 
-## 9. Deux opérations indépendantes avec `Task.WhenAll`
+## 10. Deux opérations indépendantes avec `Task.WhenAll`
 
 Version séquentielle :
 
@@ -223,7 +294,7 @@ var customer = await GetCustomerAsync(id);
 var offers = await GetOffersAsync(id);
 ```
 
-Si les deux appels sont indépendants :
+Si les deux appels sont réellement indépendants :
 
 ```csharp
 var customerTask = GetCustomerAsync(id);
@@ -237,19 +308,38 @@ var offers = await offersTask;
 
 On évite d'attendre la fin du premier appel avant même de démarrer le second.
 
+### Attention : concurrence ≠ toujours autorisée
+
+Avant de paralléliser deux opérations, vérifie que les objets utilisés supportent cet usage.
+
+En particulier, **ne lance pas deux opérations EF Core simultanées sur la même instance de `DbContext`**. Un contexte doit terminer une opération avant d'en commencer une autre.
+
+À éviter :
+
+```csharp
+var ordersTask = dbContext.Orders.ToListAsync(cancellationToken);
+var customersTask = dbContext.Customers.ToListAsync(cancellationToken);
+
+await Task.WhenAll(ordersTask, customersTask);
+```
+
+si les deux tâches utilisent exactement le même `DbContext`.
+
 ### Exercice
 
 Une page doit charger :
 
-- le profil utilisateur ;
-- ses notifications ;
-- ses préférences.
+- le profil utilisateur depuis une API ;
+- ses notifications depuis une autre API ;
+- ses préférences depuis un troisième service.
 
-Les trois sources sont indépendantes. Écris une version qui démarre les trois opérations avant de les attendre ensemble.
+Les trois clients sont indépendants. Écris une version qui démarre les trois opérations avant de les attendre ensemble.
+
+Puis demande-toi : seraient-elles toujours parallélisables si elles utilisaient toutes la même instance de `DbContext` ?
 
 ---
 
-## 10. `.Result` et `.Wait()`
+## 11. `.Result` et `.Wait()`
 
 Code à éviter par défaut dans une chaîne asynchrone :
 
@@ -263,7 +353,7 @@ ou :
 GetUserAsync(id).Wait();
 ```
 
-Ces appels bloquent le thread et cassent la propagation naturelle de l'asynchronisme.
+Ces appels bloquent le thread et cassent la propagation naturelle de l'asynchronisme. Selon le contexte, ils peuvent également contribuer à des problèmes de deadlock.
 
 Règle pratique :
 
@@ -271,7 +361,28 @@ Règle pratique :
 
 ---
 
-## 11. `CancellationToken`
+## 12. Éviter `async void`
+
+Une méthode asynchrone retourne normalement :
+
+```csharp
+Task
+Task<T>
+```
+
+Évite :
+
+```csharp
+public async void SaveAsync()
+```
+
+car l'appelant ne peut ni attendre normalement la fin de l'opération, ni observer facilement son exception.
+
+L'usage principal légitime de `async void` est celui des **event handlers** dont la signature impose `void`.
+
+---
+
+## 13. `CancellationToken`
 
 Une opération peut devenir inutile avant sa fin :
 
@@ -292,7 +403,25 @@ public Task<Order?> GetByIdAsync(
 
 Puis le transmettre aux appels qui le supportent.
 
-L'annulation est coopérative : elle indique aux opérations qu'elles devraient s'arrêter si possible.
+L'annulation est coopérative : elle indique aux opérations qu'elles devraient s'arrêter si possible. Elle ne « tue » pas arbitrairement le code en cours.
+
+### Mauvais réflexe
+
+Recevoir un token puis ne jamais le transmettre :
+
+```csharp
+public async Task<Order?> GetAsync(CancellationToken cancellationToken)
+{
+    return await dbContext.Orders.FirstOrDefaultAsync(); // token oublié
+}
+```
+
+Mieux :
+
+```csharp
+return await dbContext.Orders
+    .FirstOrDefaultAsync(cancellationToken);
+```
 
 ---
 
@@ -300,18 +429,22 @@ L'annulation est coopérative : elle indique aux opérations qu'elles devraient 
 
 Faire en sorte que :
 
-- les méthodes du repository retournent des `Task` ;
-- `OrderService` soit asynchrone ;
-- un `CancellationToken` soit propagé ;
+- les méthodes du repository retournent des `Task` lorsqu'elles font réellement de l'I/O ou doivent respecter un contrat asynchrone ;
+- `OrderService` propage l'asynchronisme ;
+- un `CancellationToken` soit propagé jusqu'aux appels qui le supportent ;
 - les exceptions métier ne soient pas silencieusement avalées ;
-- les éventuelles ressources jetables soient correctement libérées.
+- les éventuelles ressources jetables soient correctement libérées ;
+- aucune opération EF Core parallèle ne partage le même `DbContext`.
 
 ### Checkpoint final
 
 Tu dois pouvoir expliquer :
 
 1. pourquoi `Task<Order>` n'est pas un `Order` ;
-2. pourquoi `async` n'est pas synonyme de parallélisme ;
-3. quand `Task.WhenAll` est pertinent ;
-4. pourquoi un `catch (Exception) { }` est dangereux ;
-5. pourquoi `using` existe alors qu'il y a un garbage collector.
+2. pourquoi `async` n'est pas synonyme de parallélisme ou de nouveau thread ;
+3. différence entre I/O-bound et CPU-bound ;
+4. quand `Task.WhenAll` est pertinent et quand il peut être dangereux ;
+5. pourquoi `.Result` / `.Wait()` sont à éviter par défaut ;
+6. pourquoi `async void` est rarement approprié ;
+7. pourquoi un `catch (Exception) { }` est dangereux ;
+8. pourquoi `using` et `await using` existent alors qu'il y a un garbage collector.
