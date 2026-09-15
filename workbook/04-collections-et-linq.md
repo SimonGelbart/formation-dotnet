@@ -24,15 +24,15 @@ TypeScript :
 
 ```ts
 Array<User>
-Promise<User>
+Record<string, User>
 ```
 
 C# :
 
 ```csharp
 List<User>
-Task<User>
 Dictionary<Guid, User>
+Result<User>
 ```
 
 Exemple générique :
