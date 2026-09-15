@@ -289,9 +289,7 @@ public interface IOrderRepository
         Guid id,
         CancellationToken cancellationToken);
 
-    Task AddAsync(
-        Order order,
-        CancellationToken cancellationToken);
+    void Add(Order order);
 
     Task<IReadOnlyCollection<Order>> GetAllAsync(
         CancellationToken cancellationToken);
@@ -303,14 +301,24 @@ public interface IOrderRepository
 
 Le catalogue devient également asynchrone si son implémentation fait de l'I/O.
 
-Les règles métier restent synchrones :
+Les règles métier et l'ajout au repository restent synchrones lorsqu'ils ne font pas d'I/O :
 
 ```csharp
 order.AddItem(...);
+_orders.Add(order);
 order.Confirm();
 ```
 
-### Exemple de confirmation
+### Création
+
+```csharp
+var order = new Order(customerId);
+
+_orders.Add(order);
+await _orders.SaveChangesAsync(cancellationToken);
+```
+
+### Confirmation
 
 ```csharp
 var order = await _orders.GetByIdAsync(
@@ -328,7 +336,7 @@ await _orders.SaveChangesAsync(cancellationToken);
 La frontière est explicite :
 
 ```text
-charger
+charger / créer
 → modifier
 → sauvegarder
 ```
@@ -497,6 +505,11 @@ Lis la migration avant de l'appliquer.
 Le repository EF utilise un `AppDbContext` scoped.
 
 ```csharp
+public void Add(Order order)
+{
+    _dbContext.Orders.Add(order);
+}
+
 public Task SaveChangesAsync(
     CancellationToken cancellationToken)
 {
@@ -674,8 +687,8 @@ Tu dois pouvoir expliquer sans relire le workbook :
 2. pourquoi `OrderItem` capture `UnitPrice` ;
 3. pourquoi `Order` crée ses propres items et renseigne `OrderId` ;
 4. pourquoi le code commence synchrone avant de passer à `Task` ;
-5. pourquoi `OrderService` reçoit ses dépendances ;
-6. pourquoi `SaveChangesAsync` est nécessaire après une modification EF ;
+5. pourquoi `Add` peut rester synchrone alors que `SaveChangesAsync` est asynchrone ;
+6. pourquoi `OrderService` reçoit ses dépendances ;
 7. pourquoi le repository mémoire et le repository EF n'ont pas le même lifetime ;
 8. pourquoi `ConcurrentDictionary` ne rend pas tout l'agrégat thread-safe ;
 9. pourquoi `Order.Total` n'est pas une colonne ;
