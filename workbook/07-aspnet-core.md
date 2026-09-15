@@ -2,82 +2,57 @@
 
 ## Objectifs
 
-À la fin de ce chapitre, tu dois savoir :
+Ce chapitre est volontairement construit comme un **parcours continu** : on part d'un endpoint simple puis on enrichit progressivement la même API.
 
-- suivre le trajet d'une requête HTTP dans une application ASP.NET Core ;
-- comprendre `Program.cs`, le routing et le pipeline middleware ;
-- créer des endpoints avec Controllers ou Minimal APIs ;
-- distinguer modèle métier et DTO HTTP ;
-- comprendre le model binding et le rôle de `[ApiController]` ;
-- mettre en place une validation d'entrée simple ;
+À la fin, tu dois savoir :
+
+- suivre le trajet d'une requête HTTP ;
+- comprendre `Program.cs`, routing et middleware ;
+- créer des endpoints avec Controllers ;
+- distinguer DTO HTTP, domaine et persistence ;
+- comprendre model binding et `[ApiController]` ;
+- valider une entrée ;
 - choisir des codes HTTP cohérents ;
-- produire des erreurs HTTP structurées avec `ProblemDetails` ;
-- utiliser le conteneur de DI .NET dans une API ;
-- utiliser configuration, Options pattern et logging ;
-- utiliser `HttpClient` via `IHttpClientFactory` ou un client typé ;
-- comprendre pourquoi CORS existe ;
-- exposer/documenter l'API avec OpenAPI pendant le développement.
+- utiliser `ProblemDetails` pour les erreurs ;
+- utiliser DI et observer les lifetimes dans une vraie requête ;
+- utiliser configuration, Options et logging ;
+- utiliser `HttpClient` via `IHttpClientFactory` ;
+- comprendre CORS ;
+- exposer le contrat avec OpenAPI.
 
 ---
 
-## 1. Le trajet d'une requête
+# Étape 1 — Faire circuler une première requête
 
-Avant de mémoriser des classes ASP.NET Core, garde cette représentation mentale :
+Garde cette représentation mentale :
 
 ```text
 Client
-  │
-  ▼
+  ↓
 HTTP request
-  │
-  ▼
+  ↓
 Middleware
-  │
-  ▼
+  ↓
 Routing
-  │
-  ▼
+  ↓
 Controller / Endpoint
-  │
-  ▼
-Service
-  │
-  ▼
+  ↓
+Application service
+  ↓
 Repository
-  │
-  ▼
+  ↓
 Database
 ```
 
-Puis la réponse remonte :
+Puis la réponse remonte vers le client.
 
-```text
-Database
-   ↑
-Service
-   ↑
-Controller
-   ↑
-JSON / HTTP response
-```
-
-Toutes les applications n'ont pas exactement ces couches, mais ce schéma permet de situer les responsabilités.
-
-### Question à garder en tête
-
-À chaque nouvelle classe, demande-toi :
-
-> est-ce une responsabilité HTTP, applicative, métier ou infrastructure ?
-
-Cela évite de tout placer dans le Controller simplement parce qu'il est le premier code visible lors d'une requête.
+Toutes les applications n'ont pas exactement ces couches. Ce schéma sert à **situer les responsabilités**, pas à imposer une architecture universelle.
 
 ---
 
-## 2. `Program.cs`
+## 1. `Program.cs`
 
-Une application ASP.NET Core moderne démarre généralement dans `Program.cs`.
-
-Version simplifiée :
+Version minimale avec Controllers :
 
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
@@ -91,31 +66,56 @@ app.MapControllers();
 app.Run();
 ```
 
-Il faut distinguer deux grandes phases.
+Deux phases importantes :
 
-### Enregistrement des services
+```text
+builder.Services...
+→ préparer les services / le graphe de dépendances
 
-```csharp
-builder.Services.AddControllers();
-builder.Services.AddScoped<OrderService>();
+app.Use... / app.Map...
+→ construire le pipeline HTTP
 ```
-
-On prépare les composants dont l'application aura besoin.
-
-### Construction du pipeline HTTP
-
-```csharp
-app.UseExceptionHandler();
-app.MapControllers();
-```
-
-On décrit comment les requêtes vont traverser l'application.
 
 ---
 
-## 3. Middleware
+## 2. Premier Controller
 
-Un middleware peut observer ou traiter une requête avant et/ou après le composant suivant.
+```csharp
+[ApiController]
+[Route("orders")]
+public class OrdersController : ControllerBase
+{
+    [HttpGet("{id:guid}")]
+    public IActionResult GetById(Guid id)
+    {
+        return Ok(new { id });
+    }
+}
+```
+
+Teste :
+
+```text
+GET /orders/{guid}
+```
+
+Le segment `:guid` est une contrainte de route.
+
+### Minimal APIs
+
+Tu rencontreras aussi :
+
+```csharp
+app.MapGet("/orders/{id:guid}", (Guid id) => Results.Ok(new { id }));
+```
+
+Le workbook utilise surtout les Controllers pour rendre les responsabilités visibles, mais les deux styles reposent sur les mêmes fondations ASP.NET Core.
+
+---
+
+# Étape 2 — Comprendre le pipeline middleware
+
+Un middleware peut agir avant et après la suite du pipeline :
 
 ```text
 Request
@@ -133,20 +133,7 @@ Middleware A
 Response
 ```
 
-Des fonctionnalités transversales utilisent ce principe :
-
-- gestion d'erreur ;
-- logging ;
-- CORS ;
-- authentification plus tard ;
-- fichiers statiques ;
-- redirections.
-
-L'ordre des middlewares peut donc avoir de l'importance.
-
-### Petit exercice
-
-Imagine un middleware de chronométrage :
+Exercice :
 
 ```csharp
 app.Use(async (context, next) =>
@@ -155,313 +142,23 @@ app.Use(async (context, next) =>
 
     await next();
 
-    Console.WriteLine($"{context.Request.Path}: {started.ElapsedMilliseconds} ms");
+    Console.WriteLine(
+        $"{context.Request.Path}: {started.ElapsedMilliseconds} ms");
 });
 ```
 
-Identifie ce qui s'exécute **avant** l'endpoint et ce qui s'exécute **après**.
+Identifie la partie exécutée avant l'endpoint puis celle exécutée après.
+
+L'ordre des middlewares peut être important.
 
 ---
 
-## 4. Routing et endpoints
-
-Avec un Controller :
-
-```csharp
-[ApiController]
-[Route("orders")]
-public class OrdersController : ControllerBase
-{
-    [HttpGet("{id:guid}")]
-    public IActionResult GetById(Guid id)
-    {
-        ...
-    }
-}
-```
-
-La route :
-
-```text
-GET /orders/{id}
-```
-
-est reliée à cette méthode.
-
-Le segment `:guid` est une contrainte de route : une valeur qui ne ressemble pas à un GUID ne correspond pas à cette route de la même manière qu'un GUID valide.
-
-### Minimal API
-
-Une alternative plus légère :
-
-```csharp
-app.MapGet("/orders/{id:guid}", (Guid id) =>
-{
-    ...
-});
-```
-
-Le workbook privilégie les Controllers pour rendre les responsabilités visibles, mais il faut savoir que les deux approches existent et utilisent les mêmes grands mécanismes ASP.NET Core : routing, DI, binding, réponses HTTP.
-
----
-
-## 5. DTOs : ne pas confondre HTTP, domaine et base
-
-Supposons une requête de création :
-
-```json
-{
-  "customerId": "2cc8f1b7-8c7b-4c08-9d16-96506df2d86d"
-}
-```
-
-On peut représenter l'entrée avec :
-
-```csharp
-public record CreateOrderRequest(Guid CustomerId);
-```
-
-Puis la réponse avec un autre type :
-
-```csharp
-public record OrderResponse(
-    Guid Id,
-    decimal Total,
-    OrderStatus Status);
-```
-
-### Pourquoi ne pas utiliser directement l'entité `Order` ?
-
-Parce que le contrat HTTP, le modèle métier et le modèle de persistance peuvent évoluer pour des raisons différentes.
-
-Exemples :
-
-- certaines propriétés internes ne doivent pas être exposées ;
-- le client peut envoyer une forme différente du modèle métier ;
-- une colonne de DB n'a pas forcément de sens dans l'API ;
-- le contrat HTTP doit parfois rester stable alors que l'interne change.
-
-### Parallèle front-end
-
-Un DTO HTTP joue un rôle proche d'un type décrivant précisément le contrat d'une API côté TypeScript. Il n'a pas besoin de reproduire toutes les propriétés du modèle serveur.
-
----
-
-## 6. Model binding
-
-ASP.NET Core peut convertir automatiquement des informations HTTP en paramètres C#.
-
-```csharp
-[HttpGet("{id:guid}")]
-public async Task<ActionResult<OrderResponse>> GetById(
-    Guid id,
-    CancellationToken cancellationToken)
-{
-    ...
-}
-```
-
-Le framework peut obtenir des valeurs depuis :
-
-- la route ;
-- la query string ;
-- les headers ;
-- le body JSON ;
-- les services DI dans certains contextes ;
-- le token d'annulation de la requête.
-
-On peut rendre la source explicite lorsque cela aide :
-
-```csharp
-public IActionResult Search([FromQuery] string? text)
-```
-
-ou :
-
-```csharp
-public IActionResult Create([FromBody] CreateOrderRequest request)
-```
-
-Avec `[ApiController]`, plusieurs conventions de binding et de validation sont appliquées automatiquement.
-
----
-
-## 7. `CancellationToken` et requête HTTP
-
-Dans une action :
-
-```csharp
-public async Task<IActionResult> Get(
-    Guid id,
-    CancellationToken cancellationToken)
-```
-
-le token fourni par ASP.NET Core représente l'annulation de la requête, notamment lorsque le client abandonne la connexion.
-
-Tu peux aussi rencontrer :
-
-```csharp
-HttpContext.RequestAborted
-```
-
-qui représente la même idée à la frontière HTTP.
-
-Le bon réflexe est de **propager** le token :
-
-```text
-Controller
-  ↓ token
-Service
-  ↓ token
-Repository
-  ↓ token
-EF Core / HttpClient
-```
-
----
-
-## 8. Validation d'entrée avec DataAnnotations
-
-Un DTO peut exprimer certaines contraintes d'entrée simples :
-
-```csharp
-public class AddOrderItemRequest
-{
-    public Guid ProductId { get; init; }
-
-    [Range(1, 1000)]
-    public int Quantity { get; init; }
-}
-```
-
-Autre exemple :
-
-```csharp
-public class CreateProductRequest
-{
-    [Required]
-    [StringLength(200, MinimumLength = 1)]
-    public string? Name { get; init; }
-
-    [Range(typeof(decimal), "0", "999999999")]
-    public decimal Price { get; init; }
-}
-```
-
-Avec un Controller marqué `[ApiController]`, un modèle invalide provoque normalement automatiquement une réponse client 400 avant l'exécution normale de l'action.
-
-### Ne pas confondre validation d'entrée et invariant métier
-
-```text
-Quantity manquante / hors plage
-→ problème du contrat d'entrée
-
-Confirmer une commande vide
-→ règle métier
-```
-
-Une DataAnnotation n'est pas le bon endroit pour toutes les règles du domaine.
-
----
-
-## 9. Codes HTTP essentiels
-
-Quelques cas fréquents :
-
-```text
-200 OK           lecture réussie
-201 Created      ressource créée
-204 No Content   succès sans body
-400 Bad Request  requête invalide
-404 Not Found    ressource absente
-409 Conflict     conflit avec l'état courant
-500 Internal Server Error erreur inattendue côté serveur
-```
-
-Le code HTTP fait partie du contrat de l'API.
-
-### Lecture
-
-```csharp
-var order = await service.GetByIdAsync(id, cancellationToken);
-
-if (order is null)
-    return NotFound();
-
-return Ok(ToResponse(order));
-```
-
-### Création avec localisation de la ressource
-
-Pour une création réussie, on peut utiliser :
-
-```csharp
-return CreatedAtAction(
-    nameof(GetById),
-    new { id = order.Id },
-    ToResponse(order));
-```
-
-Cela produit un `201 Created` et peut renseigner l'URL permettant de relire la ressource créée.
-
----
-
-## 10. `ProblemDetails` et gestion globale des erreurs
-
-Évite ceci dans chaque endpoint :
-
-```csharp
-try
-{
-    ...
-}
-catch (Exception)
-{
-    return StatusCode(500);
-}
-```
-
-Les erreurs inattendues sont généralement mieux gérées à un niveau transversal.
-
-ASP.NET Core dispose de mécanismes permettant de produire des réponses d'erreur structurées suivant le format **Problem Details**.
-
-Une configuration peut commencer par :
-
-```csharp
-builder.Services.AddProblemDetails();
-```
-
-puis :
-
-```csharp
-app.UseExceptionHandler();
-```
-
-L'idée importante pour le workbook n'est pas de construire immédiatement un système d'erreurs sophistiqué, mais de séparer :
-
-```text
-exception inattendue
-→ gestion transversale
-
-ressource absente
-→ résultat applicatif traduit en 404
-
-entrée invalide
-→ validation / 400
-
-conflit métier
-→ traduction cohérente, par exemple 409 selon le contrat
-```
-
----
-
-## 11. DI dans ASP.NET Core
+# Étape 3 — Injecter le service au lieu de le construire
 
 Enregistrement :
 
 ```csharp
 builder.Services.AddScoped<OrderService>();
-builder.Services.AddSingleton<IOrderRepository, InMemoryOrderRepository>();
 ```
 
 Utilisation :
@@ -478,15 +175,242 @@ public class OrdersController : ControllerBase
 }
 ```
 
-Le Controller ne construit pas son service. Le conteneur fournit l'instance.
+Le Controller n'a pas besoin de connaître la construction du service.
 
-Rappelle-toi que le lifetime du repository mémoire est un cas pédagogique particulier : si sa collection constitue le stockage lui-même, il doit survivre entre les requêtes ou déléguer à un store qui survit entre les requêtes.
+### Observer enfin les lifetimes du chapitre 3
+
+Créer :
+
+```csharp
+public sealed class InstanceId
+{
+    public Guid Id { get; } = Guid.NewGuid();
+}
+```
+
+Teste successivement :
+
+```csharp
+AddTransient<InstanceId>()
+AddScoped<InstanceId>()
+AddSingleton<InstanceId>()
+```
+
+Expose temporairement deux résolutions pendant une même requête et compare les GUID, puis répète sur une nouvelle requête.
+
+À ce stade, `Scoped = même instance dans une requête` devient un comportement observé plutôt qu'une définition abstraite.
 
 ---
 
-## 12. Configuration
+# Étape 4 — DTOs et model binding
 
-Exemple `appsettings.json` :
+Ne retourne pas directement le modèle métier par réflexe.
+
+```csharp
+public record CreateOrderRequest(Guid CustomerId);
+
+public record OrderResponse(
+    Guid Id,
+    decimal Total,
+    OrderStatus Status);
+```
+
+Pourquoi séparer DTO et domaine ?
+
+```text
+contrat HTTP
+≠ forcément
+modèle métier
+≠ forcément
+modèle de persistence
+```
+
+Ces trois représentations peuvent évoluer pour des raisons différentes.
+
+### Model binding
+
+```csharp
+[HttpGet("{id:guid}")]
+public async Task<ActionResult<OrderResponse>> GetById(
+    Guid id,
+    CancellationToken cancellationToken)
+{
+    ...
+}
+```
+
+ASP.NET Core peut obtenir des valeurs depuis :
+
+- route ;
+- query string ;
+- headers ;
+- body JSON ;
+- services DI dans certains contextes ;
+- token d'annulation de la requête.
+
+Tu peux préciser la source :
+
+```csharp
+public IActionResult Search([FromQuery] string? text)
+```
+
+```csharp
+public IActionResult Create([FromBody] CreateOrderRequest request)
+```
+
+---
+
+## 5. `CancellationToken` côté HTTP
+
+Le token reçu par une action correspond à l'annulation de la requête HTTP.
+
+```csharp
+public async Task<IActionResult> Get(
+    Guid id,
+    CancellationToken cancellationToken)
+```
+
+Il est lié à la même idée que :
+
+```csharp
+HttpContext.RequestAborted
+```
+
+Propage-le :
+
+```text
+Controller
+  ↓
+Service
+  ↓
+Repository
+  ↓
+EF Core / HttpClient
+```
+
+---
+
+# Étape 5 — Ajouter une création correcte
+
+```csharp
+[HttpPost]
+public async Task<ActionResult<OrderResponse>> Create(
+    CreateOrderRequest request,
+    CancellationToken cancellationToken)
+{
+    var order = await _orderService.CreateAsync(
+        request.CustomerId,
+        cancellationToken);
+
+    var response = ToResponse(order);
+
+    return CreatedAtAction(
+        nameof(GetById),
+        new { id = order.Id },
+        response);
+}
+```
+
+`CreatedAtAction` permet de produire un `201 Created` et une localisation permettant de relire la ressource.
+
+Codes utiles :
+
+```text
+200 OK
+201 Created
+204 No Content
+400 Bad Request
+404 Not Found
+409 Conflict
+500 Internal Server Error
+```
+
+Le code HTTP fait partie du contrat de l'API.
+
+---
+
+# Étape 6 — Ajouter de la validation d'entrée
+
+```csharp
+public class AddOrderItemRequest
+{
+    public Guid ProductId { get; init; }
+
+    [Range(1, 100)]
+    public int Quantity { get; init; }
+}
+```
+
+Avec `[ApiController]`, une entrée invalide déclenche normalement une réponse `400` avant l'exécution normale de l'action.
+
+### Validation d'entrée ≠ invariant métier
+
+```text
+Quantity = 0 dans le JSON
+→ validation du contrat HTTP
+
+Confirmer une commande vide
+→ règle métier
+```
+
+N'essaie pas de déplacer toutes les règles métier dans des DataAnnotations.
+
+### Exercice
+
+Envoie une quantité `0` avant d'écrire un `if` manuel dans le Controller. Observe la réponse du framework.
+
+---
+
+# Étape 7 — Gérer les erreurs globalement
+
+Évite de répéter :
+
+```csharp
+try
+{
+    ...
+}
+catch (Exception)
+{
+    return StatusCode(500);
+}
+```
+
+Configuration simple :
+
+```csharp
+builder.Services.AddProblemDetails();
+```
+
+puis :
+
+```csharp
+app.UseExceptionHandler();
+```
+
+Pense les cas séparément :
+
+```text
+entrée invalide
+→ 400
+
+ressource absente
+→ 404
+
+conflit avec l'état courant
+→ 409 selon le contrat choisi
+
+exception inattendue
+→ gestion transversale / 500
+```
+
+`ProblemDetails` donne une structure standardisée aux erreurs HTTP.
+
+---
+
+# Étape 8 — Configuration et Options
+
+`appsettings.json` :
 
 ```json
 {
@@ -496,45 +420,51 @@ Exemple `appsettings.json` :
 }
 ```
 
-On peut lire la configuration directement :
+Type d'options :
 
 ```csharp
-builder.Configuration["ExternalApi:BaseUrl"]
-```
-
-mais pour des configurations structurées, l'Options pattern est souvent plus lisible.
-
-```csharp
-public class ExternalApiOptions
+public sealed class ExternalApiOptions
 {
-    public required string BaseUrl { get; init; }
+    public const string SectionName = "ExternalApi";
+
+    [Required]
+    public string? BaseUrl { get; init; }
 }
 ```
 
-Enregistrement :
+Enregistrement avec validation :
 
 ```csharp
-builder.Services.Configure<ExternalApiOptions>(
-    builder.Configuration.GetSection("ExternalApi"));
+builder.Services
+    .AddOptions<ExternalApiOptions>()
+    .Bind(builder.Configuration.GetSection(
+        ExternalApiOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+```
+
+Cela apporte une nuance importante :
+
+```text
+required en C#
+→ contrat d'initialisation au moment où le code construit l'objet
+
+validation Options
+→ vérifier réellement la configuration bindée au runtime
 ```
 
 Utilisation :
 
 ```csharp
-public class CatalogClient
+public CatalogClient(IOptions<ExternalApiOptions> options)
 {
-    private readonly ExternalApiOptions _options;
-
-    public CatalogClient(IOptions<ExternalApiOptions> options)
-    {
-        _options = options.Value;
-    }
+    _options = options.Value;
 }
 ```
 
-### Environnements
+### Secrets
 
-Tu peux rencontrer :
+Tu rencontreras :
 
 ```text
 appsettings.json
@@ -543,23 +473,11 @@ variables d'environnement
 user secrets en développement
 ```
 
-Les sources de configuration peuvent se surcharger selon leur ordre et l'environnement.
-
-### Règle importante
-
-Ne versionne pas des mots de passe, tokens ou secrets réels dans `appsettings.json` du dépôt.
+Ne versionne pas de vrais mots de passe, tokens ou secrets.
 
 ---
 
-## 13. Logging structuré
-
-Injecter :
-
-```csharp
-ILogger<OrderService>
-```
-
-Puis :
+# Étape 9 — Logging structuré
 
 ```csharp
 _logger.LogInformation(
@@ -567,15 +485,13 @@ _logger.LogInformation(
     customerId);
 ```
 
-Ce logging structuré est préférable à :
+Préférer cela à :
 
 ```csharp
 Console.WriteLine("Creating order " + customerId);
 ```
 
-La valeur `CustomerId` reste une propriété structurée du message plutôt qu'une simple concaténation de texte.
-
-### Attention
+`CustomerId` reste une propriété structurée du log.
 
 Ne logue pas arbitrairement :
 
@@ -584,11 +500,11 @@ Ne logue pas arbitrairement :
 - secrets ;
 - données personnelles sensibles.
 
-Et évite de logger la même exception à tous les niveaux de la pile, ce qui peut créer plusieurs événements identiques pour une seule erreur.
+Évite aussi de journaliser la même exception à tous les étages.
 
 ---
 
-## 14. Appels HTTP sortants
+# Étape 10 — Appeler une API externe
 
 Parallèle front-end :
 
@@ -596,27 +512,12 @@ Parallèle front-end :
 fetch / Axios  ↔  HttpClient
 ```
 
-Évite de disperser partout :
+Évite de disperser partout la construction de clients HTTP.
+
+Client typé :
 
 ```csharp
-new HttpClient()
-```
-
-Dans une application ASP.NET Core, on utilise souvent `IHttpClientFactory`.
-
-### Client nommé ou simple
-
-```csharp
-builder.Services.AddHttpClient("catalog", client =>
-{
-    client.BaseAddress = new Uri("https://example.test");
-});
-```
-
-### Client typé
-
-```csharp
-public class CatalogClient
+public sealed class CatalogClient
 {
     private readonly HttpClient _httpClient;
 
@@ -629,7 +530,9 @@ public class CatalogClient
         Guid id,
         CancellationToken cancellationToken)
     {
-        return _httpClient.GetAsync($"/products/{id}", cancellationToken);
+        return _httpClient.GetAsync(
+            $"/products/{id}",
+            cancellationToken);
     }
 }
 ```
@@ -643,26 +546,18 @@ builder.Services.AddHttpClient<CatalogClient>(client =>
 });
 ```
 
-Le client typé regroupe naturellement la configuration et les appels vers une API particulière.
+`IHttpClientFactory` aide à centraliser configuration et gestion des handlers/connexions.
 
 ---
 
-## 15. CORS : pourquoi le front peut être bloqué alors que l'API fonctionne
-
-Un développeur front-end rencontrera rapidement CORS.
-
-Situation :
+# Étape 11 — Brancher un front et rencontrer CORS
 
 ```text
 Front : http://localhost:5173
 API   : https://localhost:7001
 ```
 
-Ces URLs n'ont pas la même **origin**. Le navigateur applique alors les règles Same-Origin Policy et peut exiger que le serveur autorise explicitement l'origine du front.
-
-CORS est donc principalement une politique appliquée par les navigateurs aux requêtes cross-origin.
-
-Exemple de configuration de développement :
+Ce sont deux origins différentes. Un navigateur applique alors la Same-Origin Policy et peut demander à l'API d'autoriser explicitement le front.
 
 ```csharp
 builder.Services.AddCors(options =>
@@ -677,93 +572,56 @@ builder.Services.AddCors(options =>
 });
 ```
 
-Puis :
-
 ```csharp
 app.UseCors("frontend");
 ```
 
 ### À ne pas retenir
 
-> « CORS sécurise l'API contre tous les clients externes ».
+> « CORS empêche n'importe quel client externe d'appeler l'API. »
 
-Un serveur ou un outil comme `curl` n'est pas soumis à la politique du navigateur de la même manière. L'autorisation métier de l'API ne doit donc jamais reposer uniquement sur CORS.
-
----
-
-## 16. OpenAPI : rendre le contrat visible
-
-Une API autonome est beaucoup plus simple à apprendre lorsqu'on peut voir et tester son contrat.
-
-ASP.NET Core moderne sait générer un document OpenAPI avec les services et packages adaptés au template utilisé.
-
-L'objectif pédagogique est de pouvoir inspecter :
-
-- les routes ;
-- les verbes HTTP ;
-- les schémas JSON ;
-- les codes de réponse attendus.
-
-Quand tu ajoutes un endpoint, vérifie que sa représentation OpenAPI correspond réellement au contrat que tu voulais exposer.
-
-Selon le projet, une interface interactive de type Swagger UI peut aussi être ajoutée en développement.
+`curl`, un serveur backend ou un script ne sont pas soumis à la politique du navigateur de la même façon. CORS n'est donc pas un mécanisme d'autorisation métier.
 
 ---
 
-## Exercice — premier endpoint complet
+# Étape 12 — Rendre le contrat visible avec OpenAPI
 
-Créer :
-
-```text
-GET /orders/{id}
-```
-
-Contraintes :
-
-- utiliser `OrderService` injecté ;
-- transmettre le `CancellationToken` ;
-- retourner `404` si absent ;
-- retourner `200` avec un `OrderResponse` sinon ;
-- ne pas exposer directement l'entité de persistance ;
-- vérifier le contrat dans OpenAPI.
-
-Puis créer :
-
-```text
-POST /orders
-```
-
-et retourner `CreatedAtAction` vers `GET /orders/{id}`.
-
----
-
-## Exercice — validation
-
-Créer :
-
-```text
-POST /orders/{id}/items
-```
-
-avec :
+Avec le support OpenAPI ASP.NET Core :
 
 ```csharp
-public class AddOrderItemRequest
-{
-    public Guid ProductId { get; init; }
+builder.Services.AddOpenApi();
+```
 
-    [Range(1, 100)]
-    public int Quantity { get; init; }
+Puis en développement :
+
+```csharp
+if (app.Environment.IsDevelopment())
+{
+    app.MapOpenApi();
 }
 ```
 
-Tester avec une quantité `0` et observer le comportement de `[ApiController]` avant d'ajouter du code manuel dans le Controller.
+Le document est alors exposé par défaut sous une route du type :
+
+```text
+/openapi/v1.json
+```
+
+Utilise-le pour inspecter :
+
+- routes ;
+- verbes HTTP ;
+- schémas JSON ;
+- paramètres ;
+- réponses documentées.
+
+Une UI interactive peut être ajoutée séparément si le projet en a besoin ; le document OpenAPI lui-même reste le contrat généré.
 
 ---
 
 ## Application au projet fil rouge
 
-À ce stade, l'application doit exposer au minimum :
+À ce stade, expose au minimum :
 
 ```text
 GET  /products
@@ -775,29 +633,42 @@ GET  /orders
 POST /orders/{id}/confirm
 ```
 
-La persistance peut encore être en mémoire. Le but est d'abord de maîtriser le flux :
+Progression recommandée :
 
 ```text
-HTTP
- ↓
-Controller
- ↓
-Application service
- ↓
-Repository / Catalog
+GET simple
+  ↓
+injection du service
+  ↓
+DTO + binding
+  ↓
+POST + CreatedAtAction
+  ↓
+validation
+  ↓
+ProblemDetails
+  ↓
+configuration / logging
+  ↓
+HttpClient
+  ↓
+front + CORS
+  ↓
+OpenAPI
 ```
 
 ### Checkpoint final
 
 Tu dois pouvoir expliquer :
 
-1. différence entre middleware et endpoint ;
+1. différence middleware / endpoint ;
 2. rôle de `[ApiController]` ;
-3. différence entre validation d'entrée et invariant métier ;
-4. pourquoi `CreatedAtAction` est utile lors d'un POST ;
-5. comment `CancellationToken` voyage de HTTP vers EF Core / HttpClient ;
-6. pourquoi utiliser `ProblemDetails` pour structurer les erreurs ;
-7. pourquoi le logging structuré est préférable à une concaténation ;
-8. ce que résout `IHttpClientFactory` ;
-9. pourquoi CORS concerne particulièrement les navigateurs ;
-10. pourquoi OpenAPI aide à vérifier le contrat de l'API.
+3. différence validation d'entrée / invariant métier ;
+4. pourquoi `CreatedAtAction` est utile ;
+5. comment `CancellationToken` voyage vers les I/O ;
+6. rôle de `ProblemDetails` ;
+7. différence entre `required` et validation runtime des Options ;
+8. pourquoi le logging structuré est utile ;
+9. ce que résout `IHttpClientFactory` ;
+10. pourquoi CORS concerne particulièrement les navigateurs ;
+11. comment OpenAPI rend le contrat inspectable.
