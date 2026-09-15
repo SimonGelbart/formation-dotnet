@@ -28,8 +28,6 @@ public class Order
 }
 ```
 
-Puis :
-
 ```csharp
 var order = new Order();
 ```
@@ -52,24 +50,27 @@ public class Order
 }
 ```
 
-N'importe quel code peut alors écrire :
+N'importe quel code peut écrire :
 
 ```csharp
 order.Total = -1000;
 order.Status = "Anything";
 ```
 
-Version plus protectrice :
+Une version métier plus protectrice ne laisse pas le consommateur inventer son état :
 
 ```csharp
 public class Order
 {
-    public decimal Total { get; private set; }
+    private readonly List<OrderItem> _items = [];
+
+    public IReadOnlyCollection<OrderItem> Items => _items;
     public OrderStatus Status { get; private set; } = OrderStatus.Draft;
+    public decimal Total => _items.Sum(x => x.Subtotal);
 
     public void Confirm()
     {
-        if (Total <= 0)
+        if (_items.Count == 0)
             throw new InvalidOperationException("An empty order cannot be confirmed.");
 
         Status = OrderStatus.Confirmed;
@@ -77,11 +78,17 @@ public class Order
 }
 ```
 
+### Pourquoi tester `_items.Count == 0` plutôt que `Total <= 0` ?
+
+Parce que la règle métier est :
+
+> une commande vide ne peut pas être confirmée.
+
+Une commande peut contenir un produit gratuit et avoir un total à `0`. Tester le total serait donc une approximation de la vraie règle.
+
 ### Idée clé
 
-> L'objet doit autant que possible empêcher lui-même les états qui n'ont pas de sens.
-
-C'est ce qu'on appelle protéger ses **invariants**.
+> Un invariant doit exprimer la règle métier réelle, pas seulement un indicateur qui lui ressemble souvent.
 
 ---
 
@@ -93,16 +100,14 @@ Ceci expose une liste modifiable à tout le monde :
 public List<OrderItem> Items { get; } = [];
 ```
 
-Du code extérieur peut alors faire :
+Du code extérieur peut contourner les règles :
 
 ```csharp
 order.Items.Clear();
 order.Items.Add(invalidItem);
 ```
 
-et contourner les règles prévues par `Order`.
-
-Une approche plus protectrice :
+Approche plus protectrice :
 
 ```csharp
 public class Order
@@ -121,10 +126,6 @@ public class Order
 }
 ```
 
-Le consommateur peut lire les items, mais doit passer par les comportements du domaine pour modifier la commande.
-
-### Nuance
-
 `IReadOnlyCollection<T>` empêche surtout la modification de **la collection via ce contrat**. Il ne rend pas automatiquement les objets contenus immuables.
 
 ---
@@ -139,12 +140,12 @@ NotificationSender
 └── SmsSender
 ```
 
-On pourrait représenter le concept commun avec une classe abstraite :
+On pourrait utiliser une classe abstraite :
 
 ```csharp
 public abstract class NotificationSender
 {
-    public abstract Task SendAsync(string message);
+    public abstract void Send(string message);
 }
 ```
 
@@ -153,36 +154,31 @@ Puis :
 ```csharp
 public class EmailSender : NotificationSender
 {
-    public override Task SendAsync(string message)
+    public override void Send(string message)
     {
         Console.WriteLine($"Email: {message}");
-        return Task.CompletedTask;
     }
 }
 ```
-
-Le point important est :
 
 ```csharp
 NotificationSender sender = new EmailSender();
 ```
 
-La variable est typée avec l'abstraction, mais l'objet concret est un `EmailSender`.
-
-C'est une forme essentielle de **polymorphisme**.
+La variable est typée avec l'abstraction, mais l'objet concret est un `EmailSender` : c'est une forme essentielle de **polymorphisme**.
 
 ### Mais fallait-il vraiment une classe abstraite ?
 
-Dans cet exemple, si les implémentations ne partagent ni état ni comportement, une interface est probablement plus simple :
+Si les implémentations ne partagent ni état ni comportement, une interface est probablement plus simple :
 
 ```csharp
 public interface INotificationSender
 {
-    Task SendAsync(string message);
+    void Send(string message);
 }
 ```
 
-Ce contraste est important : ne choisis pas l'héritage uniquement parce que plusieurs classes « se ressemblent ».
+Ne choisis pas l'héritage uniquement parce que plusieurs classes « se ressemblent ».
 
 ---
 
@@ -196,8 +192,6 @@ La composition exprime :
 
 > `OrderService` utilise un `IOrderRepository`.
 
-Exemple :
-
 ```csharp
 public class OrderService
 {
@@ -210,24 +204,18 @@ public class OrderService
 }
 ```
 
-`OrderService` n'est pas un repository. Il **collabore avec** un repository.
-
-### Règle de réflexion
-
 Avant d'hériter, demande-toi :
 
 1. existe-t-il réellement une relation « est un » ?
 2. la classe dérivée peut-elle être utilisée partout où la classe de base est attendue ?
 3. ai-je besoin d'état/comportement commun, ou seulement d'un contrat ?
-4. une composition rendrait-elle la relation plus claire et plus flexible ?
+4. une composition rendrait-elle la relation plus claire ?
 
 ---
 
 ## 6. `virtual`, `override`, `abstract`, `sealed`
 
 ### `virtual`
-
-Une méthode possède une implémentation par défaut mais peut être redéfinie.
 
 ```csharp
 public virtual decimal CalculatePrice()
@@ -236,9 +224,9 @@ public virtual decimal CalculatePrice()
 }
 ```
 
-### `override`
+Une implémentation par défaut existe mais peut être redéfinie.
 
-Une classe dérivée remplace l'implémentation virtuelle.
+### `override`
 
 ```csharp
 public override decimal CalculatePrice()
@@ -249,7 +237,7 @@ public override decimal CalculatePrice()
 
 ### `abstract`
 
-Une classe abstraite ne peut pas être instanciée directement. Une méthode abstraite impose aux classes concrètes dérivées de fournir une implémentation.
+Une classe abstraite ne peut pas être instanciée directement. Une méthode abstraite impose aux classes concrètes dérivées une implémentation.
 
 ### `sealed`
 
@@ -261,7 +249,7 @@ public sealed class EmailSender
 }
 ```
 
-On peut également sceller une redéfinition :
+On peut aussi sceller une redéfinition :
 
 ```csharp
 public sealed override decimal CalculatePrice()
@@ -270,19 +258,11 @@ public sealed override decimal CalculatePrice()
 }
 ```
 
-Les classes encore plus dérivées ne pourront alors plus remplacer cette méthode.
-
 ---
 
 ## 7. `ToString()`, `Equals()` et `GetHashCode()`
 
 Toutes les classes C# héritent indirectement de `object`.
-
-Parmi ses méthodes importantes :
-
-- `ToString()` ;
-- `Equals()` ;
-- `GetHashCode()`.
 
 ### `ToString()`
 
@@ -299,11 +279,7 @@ public class Product
 }
 ```
 
-`override` est possible parce que `object.ToString()` est virtuelle.
-
 ### Égalité des classes
-
-Deux classes distinctes ayant les mêmes données ne sont pas automatiquement considérées comme égales par valeur :
 
 ```csharp
 var a = new Product { Name = "Keyboard", Price = 100m };
@@ -312,11 +288,11 @@ var b = new Product { Name = "Keyboard", Price = 100m };
 Console.WriteLine(a.Equals(b)); // généralement false sans sémantique personnalisée
 ```
 
-Un `record` fournit au contraire par défaut une sémantique de valeur plus naturelle pour ses composants.
+Un `record` fournit par défaut une sémantique de valeur plus naturelle pour ses composants.
 
 ### Contrat `Equals` / `GetHashCode`
 
-Si deux objets sont considérés comme égaux par `Equals`, ils doivent produire le même hash code :
+Si deux objets sont égaux selon `Equals`, ils doivent produire le même hash code :
 
 ```text
 Equals(a, b) == true
@@ -324,13 +300,23 @@ Equals(a, b) == true
 a.GetHashCode() == b.GetHashCode()
 ```
 
-L'inverse n'est pas garanti : deux objets différents peuvent avoir le même hash code.
+L'inverse n'est pas garanti.
 
-Pourquoi est-ce important ? Parce que `Dictionary<TKey,TValue>` et `HashSet<T>` utilisent le hash code puis l'égalité pour organiser et retrouver leurs éléments.
+`Dictionary<TKey,TValue>` et `HashSet<T>` utilisent cette combinaison pour organiser et retrouver leurs éléments.
 
-### Règle pratique
+### Expérience avec `HashSet<T>`
 
-Ne surcharge pas `Equals` et `GetHashCode` au hasard. Si ton objet a une vraie sémantique de valeur, utilise éventuellement un `record` ou implémente les deux de manière cohérente.
+Crée deux instances de classe contenant les mêmes données puis ajoute-les à un `HashSet<T>`. Compare ensuite le comportement avec un `record` équivalent.
+
+L'objectif est de rendre concret le lien :
+
+```text
+égalité
+   ↓
+GetHashCode
+   ↓
+HashSet / Dictionary
+```
 
 ---
 
@@ -342,19 +328,13 @@ Méthode d'instance :
 order.Confirm();
 ```
 
-Elle agit sur un objet particulier.
-
 Méthode statique :
 
 ```csharp
 Math.Max(10, 20);
 ```
 
-Elle appartient au type lui-même.
-
-### Quand `static` est naturel
-
-Pour une opération pure qui n'a pas besoin d'état ni de dépendance :
+`static` est naturel pour une opération qui n'a pas besoin d'état d'instance ou de dépendance :
 
 ```csharp
 public static decimal AddVat(decimal amount, decimal rate)
@@ -363,7 +343,7 @@ public static decimal AddVat(decimal amount, decimal rate)
 }
 ```
 
-### Piège : état global
+### Piège : état global mutable
 
 ```csharp
 public static class Database
@@ -372,14 +352,14 @@ public static class Database
 }
 ```
 
-Cela introduit un état global partagé, ce qui peut compliquer :
+Cela complique potentiellement :
 
 - les tests ;
 - la concurrence ;
-- la compréhension du cycle de vie ;
+- le cycle de vie ;
 - le remplacement de l'implémentation.
 
-`static` n'est donc pas mauvais en soi ; **l'état global mutable** mérite surtout d'être traité avec prudence.
+`static` n'est pas mauvais en soi ; **l'état global mutable** mérite surtout d'être traité avec prudence.
 
 ---
 
@@ -396,7 +376,7 @@ public class BankAccount
 
 Modifier la classe pour que :
 
-- le solde ne puisse pas être écrit directement depuis l'extérieur ;
+- le solde ne puisse pas être écrit directement ;
 - `Deposit` refuse les montants <= 0 ;
 - `Withdraw` refuse les montants <= 0 ;
 - `Withdraw` refuse de rendre le solde négatif.
@@ -411,14 +391,12 @@ Le setter de `Balance` ne doit pas être public. Les règles doivent être centr
 
 ## Exercice — héritage ou composition ?
 
-Pour chaque relation, choisis d'abord entre héritage, interface ou composition et justifie :
+Pour chaque relation, choisis entre héritage, interface ou composition et justifie :
 
 1. `EmailSender` / « peut envoyer une notification » ;
 2. `OrderService` / `OrderRepository` ;
-3. `Circle` / `Shape` si toutes les formes partagent un contrat de calcul d'aire ;
+3. `Circle` / `Shape` ;
 4. `Car` / `Engine`.
-
-L'objectif n'est pas d'obtenir une réponse unique à tout prix, mais de savoir **exprimer la nature de la relation**.
 
 ---
 
