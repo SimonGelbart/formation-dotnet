@@ -6,31 +6,41 @@ L'objectif n'est pas d'apprendre la programmation depuis zéro, mais de comprend
 
 ## Référence technique
 
-Le workbook prend **.NET 10** comme environnement de référence. Certains concepts sont valables sur de nombreuses versions de .NET, mais les commandes et exemples de tooling sont écrits pour l'écosystème actuel :
+Le workbook prend **.NET 10** comme environnement de référence.
 
 ```text
 .NET 10
 ASP.NET Core
 Entity Framework Core
 xUnit
+SQLite pour les exercices locaux
 ```
 
-Le but n'est pas d'apprendre les nouveautés de C# ou .NET par cœur. La priorité reste les fondamentaux durables : système de types, POO, dépendances, LINQ, async, HTTP, persistance, tests et architecture.
+La priorité reste les fondamentaux durables : système de types, POO, dépendances, LINQ, async, HTTP, persistance, tests et architecture.
+
+---
 
 ## Mode d'emploi
 
-Chaque chapitre suit autant que possible la même structure :
+Chaque chapitre suit autant que possible le même cycle :
 
-1. objectifs ;
-2. explication de la notion ;
-3. parallèle avec TypeScript / le front-end ;
-4. exemple C# minimal ;
-5. exemple réaliste ;
-6. pièges fréquents ;
-7. exercice ou checkpoint ;
-8. application au projet fil rouge.
-
-Le lecteur est encouragé à **prédire le comportement du code avant de l'exécuter** et à réaliser les exercices dans un projet local.
+```text
+objectif
+ ↓
+explication
+ ↓
+parallèle TypeScript / front
+ ↓
+exemple minimal
+ ↓
+contre-exemple / piège
+ ↓
+expérience ou exercice
+ ↓
+correction / critères de réussite
+ ↓
+application au projet fil rouge
+```
 
 ### Ne pas lire passivement
 
@@ -45,10 +55,13 @@ Pour chaque exemple important :
 6. observer la conséquence
 ```
 
-Les chapitres contiennent volontairement certains exercices d'observation : lifetimes DI, exécution différée LINQ, SQL généré par EF Core, validation HTTP, etc.
+Le [chapitre 0](00-demarrage.md) montre comment créer un petit projet `Sandbox` pour tester les exemples.
+
+---
 
 ## Parcours
 
+0. [Démarrer et exécuter les exemples](00-demarrage.md)
 1. [De TypeScript à C#](01-typescript-vers-csharp.md)
 2. [Modéliser avec les objets](02-modelisation-objet.md)
 3. [Abstraction, interfaces et dépendances](03-abstraction-et-dependances.md)
@@ -57,58 +70,124 @@ Les chapitres contiennent volontairement certains exercices d'observation : life
 6. [Écosystème .NET et NuGet](06-ecosysteme-dotnet-et-nuget.md)
 7. [Construire une API ASP.NET Core](07-aspnet-core.md)
 8. [SQL et Entity Framework Core](08-sql-et-ef-core.md)
-9. [Tests, architecture et design patterns](09-tests-architecture-patterns.md)
-10. [Projet fil rouge — Order API](10-projet-fil-rouge.md)
+9. [Tester une application .NET](09-tests.md)
+10. [Architecture et design patterns](10-architecture-patterns.md)
+11. [Projet fil rouge — Order API](11-projet-fil-rouge.md)
+
+---
+
+## Pourquoi certaines abstractions évoluent pendant le parcours ?
+
+Le workbook évite volontairement d'utiliser des notions avant de les enseigner.
+
+Par exemple, au chapitre 3, le repository commence simplement :
+
+```csharp
+public interface IOrderRepository
+{
+    Order? GetById(Guid id);
+    void Add(Order order);
+}
+```
+
+Puis, après l'apprentissage de `Task`, `async` et `CancellationToken`, le chapitre 5 le fait évoluer vers une frontière asynchrone.
+
+L'objectif est de comprendre **pourquoi** une abstraction change, pas de recopier dès le début une signature complexe sans comprendre ses éléments.
+
+---
 
 ## Projet fil rouge
 
-Tout au long du workbook, une petite **Order API** sert de support. Elle évolue progressivement :
+Une petite **Order API** sert de support transversal.
+
+Elle évolue progressivement :
 
 ```text
-Code métier simple
+modèle métier simple
     ↓
-POO et encapsulation
+encapsulation
     ↓
-Interfaces et injection de dépendances
+interfaces et DI
+    ↓
+async / cancellation
     ↓
 API HTTP
     ↓
-Persistance avec EF Core
+EF Core / SQL
     ↓
-Tests
+tests
     ↓
-Architecture et refactoring
+architecture / patterns
 ```
 
-Le projet conserve notamment une distinction importante entre :
+### Modèle métier commun à tout le workbook
 
 ```text
 Product.Price
-→ prix courant du catalogue
+→ prix actuel du catalogue
 
 OrderItem.UnitPrice
 → prix capturé au moment de la commande
 ```
 
-Cette décision évite qu'un changement du catalogue modifie l'historique d'une ancienne commande.
+Ainsi, modifier le catalogue ne réécrit pas l'histoire d'une ancienne commande.
 
-La cible de sortie est la suivante : être capable de lire, comprendre, modifier et construire proprement une API .NET classique utilisant ASP.NET Core, l'injection de dépendances, LINQ, EF Core et des tests.
+Dans la version relationnelle utilisée dans le workbook :
+
+```text
+Orders
+- Id
+- CustomerId
+- Status
+- CreatedAt
+
+OrderItems
+- Id
+- OrderId
+- ProductId
+- ProductName
+- UnitPrice
+- Quantity
+```
+
+`Order.Total` est calculé à partir des items ; il n'est pas présenté comme une colonne `Orders.Total` implicite.
+
+---
 
 ## Critère de réussite
 
 Le workbook n'est pas validé uniquement lorsque « le code compile ».
 
-Le lecteur doit être capable d'expliquer les décisions principales, par exemple :
+Le lecteur doit savoir expliquer notamment :
 
+- value type vs reference type ;
+- passage par valeur d'une référence ;
 - pourquoi un objet protège ses invariants ;
 - pourquoi un service reçoit ses dépendances ;
-- pourquoi un lifetime DI change le comportement ;
+- ce que change un lifetime DI ;
+- pourquoi certaines frontières deviennent asynchrones ;
 - quand LINQ exécute réellement une séquence ;
-- quelle partie d'une requête EF Core s'exécute en SQL ;
+- quelle partie d'une requête EF devient du SQL ;
+- comment EF persiste un modèle encapsulé ;
 - pourquoi une API utilise des DTOs ;
-- différence entre test unitaire et test d'intégration ;
+- différence test unitaire / intégration ;
 - pourquoi une couche ou un design pattern est présent.
+
+---
 
 ## Hors périmètre initial
 
-Ces sujets sont volontairement gardés pour une seconde étape : authentification / autorisation, Docker, cache distribué, messaging, microservices, CQRS / MediatR, observabilité avancée, Kubernetes et cloud.
+Ces sujets sont volontairement gardés pour une seconde étape :
+
+```text
+authentification / autorisation
+Docker
+cache distribué
+messaging
+observabilité avancée
+CQRS / MediatR
+microservices
+Kubernetes / cloud
+```
+
+La cible de sortie est déjà ambitieuse : être capable de lire, comprendre, modifier, tester et construire proprement une API .NET classique utilisant ASP.NET Core, DI, LINQ et EF Core.
