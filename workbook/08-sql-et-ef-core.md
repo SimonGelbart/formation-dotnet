@@ -7,11 +7,14 @@
 - comprendre les concepts SQL minimums nécessaires au travail avec EF Core ;
 - expliquer le rôle d'un ORM ;
 - utiliser `DbContext` et `DbSet<T>` ;
-- comprendre les migrations ;
+- configurer un provider et une chaîne de connexion ;
+- comprendre les migrations et utiliser les commandes principales ;
 - réaliser des opérations CRUD simples ;
 - comprendre les relations et propriétés de navigation ;
-- distinguer `IEnumerable<T>` et `IQueryable<T>` ;
+- distinguer `IEnumerable<T>` et `IQueryable<T>` sans réduire le premier à « données en mémoire » ;
 - comprendre le tracking et `AsNoTracking()` ;
+- comprendre les stratégies de chargement des relations ;
+- inspecter une requête générée avec `ToQueryString()` ;
 - identifier les risques de performance liés aux requêtes générées.
 
 ---
@@ -50,9 +53,11 @@ Orders
 └────────────┴────────────┴─────────┘
 ```
 
-- une **colonne** décrit un champ ;
+- une **colonne** décrit une donnée stockée ;
 - une **ligne** représente un enregistrement ;
 - une **table** regroupe des enregistrements de même nature.
+
+Le modèle relationnel n'est pas identique au modèle objet. Une partie du travail d'EF Core consiste justement à faire le pont entre les deux.
 
 ---
 
@@ -113,8 +118,8 @@ ORDER BY Total DESC;
 
 Interprétation :
 
-1. prendre la table `Orders` ;
-2. garder les lignes avec `Total >= 100` ;
+1. lire `Orders` ;
+2. filtrer les lignes avec `Total >= 100` ;
 3. sélectionner certaines colonnes ;
 4. trier par total décroissant.
 
@@ -132,7 +137,7 @@ FROM Orders o
 JOIN Customers c ON c.Id = o.CustomerId;
 ```
 
-Même si EF Core masque souvent la syntaxe SQL, il est important de comprendre qu'une navigation entre entités peut entraîner des jointures ou plusieurs requêtes.
+Même si EF Core masque souvent la syntaxe SQL, il est important de comprendre qu'une navigation entre entités peut entraîner des jointures ou plusieurs requêtes selon la manière dont la requête est écrite et chargée.
 
 ---
 
@@ -162,10 +167,12 @@ Exemple :
 ```text
 1. créer une commande
 2. créer ses items
-3. enregistrer le paiement
+3. enregistrer un événement associé
 ```
 
 Selon le besoin, on veut que l'ensemble soit validé ou annulé de manière cohérente.
+
+EF Core utilise déjà des transactions dans certains scénarios, notamment autour d'un `SaveChanges`. Il faut néanmoins comprendre le concept SQL pour savoir quand plusieurs opérations doivent être coordonnées explicitement.
 
 ---
 
@@ -194,7 +201,7 @@ Il automatise notamment :
 
 ## 10. `DbContext`
 
-Le `DbContext` représente une session de travail avec la base.
+Le `DbContext` représente une unité de travail avec la base et maintient notamment un change tracker pour les entités suivies.
 
 ```csharp
 public class AppDbContext : DbContext
@@ -208,7 +215,11 @@ public class AppDbContext : DbContext
 }
 ```
 
-`DbSet<Order>` représente le point d'entrée vers les entités `Order`.
+`DbSet<Order>` fournit un point d'entrée pour interroger et modifier les entités `Order`.
+
+### Important
+
+Un `DbContext` est conçu pour une durée de vie courte. Il n'est pas thread-safe et ne doit pas servir simultanément à plusieurs opérations concurrentes.
 
 ---
 
@@ -219,26 +230,45 @@ Dans `Program.cs` :
 ```csharp
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
-    // configuration du provider et de la connexion
+    options.UseSqlite(
+        builder.Configuration.GetConnectionString("Database"));
 });
 ```
 
-Le contexte est ensuite injecté dans les services qui en ont besoin.
+Puis dans `appsettings.json` :
 
-Il est généralement `Scoped`, ce qui correspond naturellement au cycle de vie d'une requête web.
+```json
+{
+  "ConnectionStrings": {
+    "Database": "Data Source=orders.db"
+  }
+}
+```
+
+Le provider (`UseSqlite`, `UseSqlServer`, `UseNpgsql`, etc.) détermine le moteur utilisé et vient généralement d'un package NuGet spécifique.
+
+`AddDbContext` enregistre normalement le contexte avec un lifetime scoped, adapté au modèle « une unité de travail par requête » de nombreuses API.
 
 ---
 
 ## 12. Créer et sauvegarder
 
+Pour la majorité des entités :
+
 ```csharp
 var order = new Order(...);
 
-await dbContext.Orders.AddAsync(order, cancellationToken);
+dbContext.Orders.Add(order);
 await dbContext.SaveChangesAsync(cancellationToken);
 ```
 
-`AddAsync` prépare l'ajout dans le contexte. `SaveChangesAsync` déclenche réellement les écritures nécessaires en base.
+`Add` ne signifie pas que la ligne est immédiatement écrite en base. L'entité est marquée comme devant être ajoutée.
+
+C'est `SaveChangesAsync` qui déclenche les écritures nécessaires.
+
+### Pourquoi ne pas enseigner `AddAsync` par défaut ?
+
+`AddAsync` existe, mais son intérêt asynchrone concerne surtout certains générateurs de valeurs spéciaux. Pour une entité classique dont la clé est déjà disponible côté application, `Add` est généralement plus simple et approprié.
 
 ---
 
@@ -251,30 +281,30 @@ var order = await dbContext.Orders
         cancellationToken);
 ```
 
-On retrouve la syntaxe LINQ, mais la source n'est plus une simple collection mémoire.
+On retrouve la syntaxe LINQ, mais la source est un provider EF Core capable de traduire une partie de l'expression en SQL.
 
 ---
 
 ## 14. `IEnumerable<T>` vs `IQueryable<T>`
 
-C'est une différence fondamentale.
+Cette différence est fondamentale mais souvent trop simplifiée.
 
 ### `IEnumerable<T>`
 
-On travaille conceptuellement sur des objets déjà disponibles côté .NET.
+`IEnumerable<T>` exprime avant tout :
 
-```text
-Objects in memory
-      ↓
-LINQ to Objects
-```
+> « cette séquence peut être énumérée ».
+
+Cela ne garantit pas à lui seul que les données sont déjà stockées dans une `List<T>` en mémoire.
+
+Avec LINQ to Objects, les delegates C# sont exécutés par .NET lors de l'énumération.
 
 ### `IQueryable<T>`
 
-On construit une représentation d'une requête pouvant être traduite par un provider.
+`IQueryable<T>` transporte en plus une représentation de l'expression de requête qu'un provider peut analyser et traduire.
 
 ```text
-LINQ expression
+Expression LINQ
       ↓
 EF Core provider
       ↓
@@ -287,12 +317,12 @@ Exemple :
 
 ```csharp
 var query = dbContext.Orders
-    .Where(x => x.Total > 100m)
-    .OrderByDescending(x => x.Total)
+    .Where(x => x.CustomerId == customerId)
+    .OrderByDescending(x => x.CreatedAt)
     .Take(10);
 ```
 
-À ce stade, la requête peut ne pas avoir été exécutée.
+À ce stade, la requête n'a généralement pas encore été envoyée à la base.
 
 Puis :
 
@@ -302,17 +332,56 @@ var orders = await query.ToListAsync(cancellationToken);
 
 La requête est matérialisée.
 
-### Question essentielle
+### `ToList()` trop tôt
 
-Que se passe-t-il si tu fais `ToList()` trop tôt puis continues à filtrer ?
+Mauvais ordre :
 
-Tu risques de charger beaucoup plus de données en mémoire avant le filtrage.
+```csharp
+var orders = await dbContext.Orders.ToListAsync(cancellationToken);
+var expensive = orders.Where(x => x.Total >= 100m);
+```
+
+Toutes les commandes ont déjà été chargées avant le filtrage.
+
+Mieux lorsque l'expression est traduisible :
+
+```csharp
+var orders = await dbContext.Orders
+    .Where(x => x.Total >= 100m)
+    .ToListAsync(cancellationToken);
+```
+
+Le filtre peut être exécuté directement par la base.
 
 ---
 
-## 15. Tracking
+## 15. Voir le SQL avec `ToQueryString()`
 
-Par défaut, EF Core peut suivre les entités chargées afin de détecter leurs modifications.
+Pendant l'apprentissage ou le diagnostic, il est très utile d'inspecter ce qu'EF Core prévoit d'envoyer à la base.
+
+```csharp
+var query = dbContext.Orders
+    .Where(x => x.CustomerId == customerId)
+    .OrderByDescending(x => x.CreatedAt)
+    .Take(10);
+
+Console.WriteLine(query.ToQueryString());
+```
+
+### Exercice d'observation
+
+1. écris un `Where` + `Select` + `Take` ;
+2. affiche `ToQueryString()` ;
+3. déplace volontairement la matérialisation plus tôt ;
+4. observe ce qui reste exécuté côté SQL et ce qui passe côté .NET.
+
+Le but est de rendre visible la frontière entre requête traduite et traitement en mémoire.
+
+---
+
+## 16. Tracking
+
+Par défaut, EF Core suit les entités retournées par les requêtes d'entités afin de détecter leurs modifications.
 
 ```csharp
 var order = await dbContext.Orders
@@ -322,8 +391,6 @@ order.Confirm();
 await dbContext.SaveChangesAsync(cancellationToken);
 ```
 
-EF sait alors quelles modifications enregistrer.
-
 Pour une lecture seule :
 
 ```csharp
@@ -332,11 +399,13 @@ var orders = await dbContext.Orders
     .ToListAsync(cancellationToken);
 ```
 
-`AsNoTracking()` évite le coût du suivi lorsque l'on ne compte pas modifier les entités chargées.
+`AsNoTracking()` réduit le travail du change tracker lorsque l'on ne compte pas modifier puis sauvegarder les entités chargées.
+
+Ce n'est pas une règle « toujours mettre `AsNoTracking` », mais un choix lié à l'intention de la requête.
 
 ---
 
-## 16. Relations et propriétés de navigation
+## 17. Relations et propriétés de navigation
 
 Exemple :
 
@@ -350,13 +419,31 @@ public class Order
 
 `Items` peut représenter une navigation vers des lignes d'une autre table.
 
-Attention : le simple fait d'avoir une propriété de navigation ne signifie pas forcément que toutes les données seront toujours chargées automatiquement.
+Le simple fait d'avoir une propriété de navigation ne signifie pas que toutes les données seront automatiquement disponibles.
 
-Il faut comprendre les stratégies de chargement choisies par l'application.
+### Eager loading
+
+Charger explicitement une relation dans la même requête logique :
+
+```csharp
+var order = await dbContext.Orders
+    .Include(x => x.Items)
+    .FirstAsync(x => x.Id == id, cancellationToken);
+```
+
+### Explicit loading
+
+Demander plus tard le chargement d'une relation via le contexte.
+
+### Lazy loading
+
+Le chargement se produit lorsqu'on accède à la navigation, si l'application est configurée pour ce mécanisme.
+
+Le lazy loading n'est pas activé automatiquement dans toutes les applications et peut rendre le nombre réel de requêtes moins visible.
 
 ---
 
-## 17. Migrations
+## 18. Migrations
 
 Une migration décrit une évolution du schéma correspondant à une évolution du modèle.
 
@@ -374,7 +461,25 @@ Migration 2
 Schema DB v2
 ```
 
-Les migrations sont versionnées afin que plusieurs environnements puissent appliquer les mêmes changements de schéma.
+Avec l'outil `dotnet-ef` :
+
+```bash
+dotnet ef migrations add InitialCreate
+```
+
+Puis :
+
+```bash
+dotnet ef database update
+```
+
+Pour inspecter les migrations :
+
+```bash
+dotnet ef migrations list
+```
+
+Les migrations sont normalement versionnées afin que plusieurs environnements puissent appliquer les mêmes évolutions de schéma.
 
 ### Important
 
@@ -382,9 +487,9 @@ Une migration mérite d'être relue. Elle modifie la structure de la base et peu
 
 ---
 
-## 18. Le piège N+1
+## 19. Le piège N+1
 
-Supposons :
+Supposons un code ou un mécanisme de lazy/explicit loading qui produit :
 
 ```text
 1 requête pour charger 100 commandes
@@ -397,7 +502,7 @@ On obtient potentiellement :
 1 + 100 = 101 requêtes
 ```
 
-Même si le code C# semble simple, le coût réel est important.
+Le N+1 n'est donc pas causé simplement par la présence d'une propriété de navigation. Il apparaît lorsqu'une stratégie de chargement provoque des requêtes supplémentaires répétées.
 
 ### Réflexe à acquérir
 
@@ -407,6 +512,33 @@ Quand tu écris une requête EF Core, demande-toi :
 - combien de colonnes ?
 - combien de requêtes ?
 - le filtrage se fait-il en base ou en mémoire ?
+- ai-je besoin des entités complètes ou seulement d'une projection ?
+
+---
+
+## 20. Projection : ne charger que ce qui est nécessaire
+
+Pour un écran de liste, charger toute l'entité et toutes ses relations est souvent inutile.
+
+```csharp
+var summaries = await dbContext.Orders
+    .AsNoTracking()
+    .Where(x => x.Status == OrderStatus.Confirmed)
+    .Select(x => new OrderSummary(
+        x.Id,
+        x.Status,
+        x.Items.Sum(i => i.UnitPrice * i.Quantity)))
+    .Take(20)
+    .ToListAsync(cancellationToken);
+```
+
+Une projection peut :
+
+- sélectionner moins de colonnes ;
+- éviter de matérialiser des graphes d'entités complets ;
+- exprimer directement le contrat de lecture attendu.
+
+Elle montre aussi une nuance importante : une propriété C# calculée arbitraire n'est pas forcément traduisible en SQL. Dans les requêtes EF, pense en termes d'expressions que le provider sait traduire.
 
 ---
 
@@ -417,9 +549,12 @@ Considère :
 ```csharp
 var result = await dbContext.Orders
     .AsNoTracking()
-    .Where(x => x.Total >= 100m)
-    .OrderByDescending(x => x.Total)
-    .Select(x => new OrderSummary(x.Id, x.Total))
+    .Where(x => x.Status == OrderStatus.Confirmed)
+    .OrderByDescending(x => x.CreatedAt)
+    .Select(x => new OrderSummary(
+        x.Id,
+        x.Status,
+        x.Items.Sum(i => i.UnitPrice * i.Quantity)))
     .Take(20)
     .ToListAsync(cancellationToken);
 ```
@@ -429,7 +564,9 @@ Explique :
 1. quelles opérations doivent idéalement être exécutées en base ;
 2. ce que change `AsNoTracking()` ;
 3. pourquoi le `Select` peut réduire les données transférées ;
-4. ce que déclenche `ToListAsync()`.
+4. ce que déclenche `ToListAsync()` ;
+5. comment vérifier le SQL prévu avec `ToQueryString()` ;
+6. pourquoi lancer cette requête en parallèle avec une autre sur le même `DbContext` serait une mauvaise idée.
 
 ---
 
@@ -445,4 +582,14 @@ par une implémentation utilisant `AppDbContext`.
 
 Le contrat `IOrderRepository` et la logique de `OrderService` devraient changer le moins possible.
 
-C'est un test concret de la qualité du découplage réalisé dans les chapitres précédents.
+Pour les commandes, conserver le **prix unitaire au moment de l'achat** dans `OrderItem` plutôt que de toujours lire le prix courant du catalogue. Cela permet aux anciennes commandes de conserver leur vérité historique si le prix d'un produit change plus tard.
+
+Lors des requêtes de résumé, calcule le total à partir de :
+
+```text
+OrderItem.UnitPrice × OrderItem.Quantity
+```
+
+ou choisis explicitement une stratégie de persistance du total. Ne suppose pas qu'une propriété C# calculée sera automatiquement traduite en SQL.
+
+C'est un test concret de la qualité du découplage et du modèle de données réalisés dans les chapitres précédents.
