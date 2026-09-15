@@ -269,8 +269,31 @@ public interface IOrderRepository
     Task AddAsync(
         Order order,
         CancellationToken cancellationToken);
+
+    Task SaveChangesAsync(
+        CancellationToken cancellationToken);
 }
 ```
+
+### Pourquoi `SaveChangesAsync` ?
+
+Une entité déjà chargée peut être modifiée en mémoire :
+
+```csharp
+order.Confirm();
+```
+
+Avec EF Core, cette modification n'est pas envoyée à la base tant qu'on n'appelle pas `SaveChangesAsync`.
+
+Le workbook garde donc cette frontière explicite :
+
+```text
+charger
+→ modifier le domaine
+→ sauvegarder
+```
+
+Une implémentation mémoire peut simplement faire de `SaveChangesAsync` un no-op.
 
 ### Pourquoi ce refactoring est intéressant ?
 
@@ -300,6 +323,12 @@ public Task<Order?> GetByIdAsync(
 {
     _orders.TryGetValue(id, out var order);
     return Task.FromResult(order);
+}
+
+public Task SaveChangesAsync(
+    CancellationToken cancellationToken)
+{
+    return Task.CompletedTask;
 }
 ```
 
@@ -466,7 +495,9 @@ return await dbContext.Orders
 À ce stade :
 
 - fais évoluer `IOrderRepository` vers `Task` / `Task<T>` ;
+- ajoute une frontière explicite `SaveChangesAsync` ;
 - fais évoluer `OrderService` vers des méthodes `Async` lorsque ses dépendances sont asynchrones ;
+- après une modification métier persistante, appelle `SaveChangesAsync` ;
 - propage un `CancellationToken` ;
 - garde les règles métier pures synchrones lorsqu'elles n'ont aucune I/O (`order.Confirm()`, calcul de total, etc.) ;
 - ne rends pas tout `async` mécaniquement.
@@ -479,7 +510,8 @@ Tu dois pouvoir expliquer :
 2. pourquoi `async` n'est pas synonyme de parallélisme ou de nouveau thread ;
 3. différence I/O-bound / CPU-bound ;
 4. pourquoi le repository est devenu asynchrone alors que `Order.Confirm()` reste synchrone ;
-5. quand `Task.WhenAll` est pertinent ;
-6. pourquoi deux opérations EF ne doivent pas partager un même `DbContext` simultanément ;
-7. pourquoi `.Result`, `.Wait()` et `async void` sont à éviter par défaut ;
-8. pourquoi `using` et `await using` existent malgré le garbage collector.
+5. pourquoi une modification EF doit être suivie d'un `SaveChangesAsync` ;
+6. quand `Task.WhenAll` est pertinent ;
+7. pourquoi deux opérations EF ne doivent pas partager un même `DbContext` simultanément ;
+8. pourquoi `.Result`, `.Wait()` et `async void` sont à éviter par défaut ;
+9. pourquoi `using` et `await using` existent malgré le garbage collector.
