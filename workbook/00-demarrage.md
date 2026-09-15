@@ -101,7 +101,7 @@ copy = 20;
 Console.WriteLine(value);
 ```
 
-Avant d'exécuter : **prédit le résultat**.
+Avant d'exécuter : **prédis le résultat**.
 
 Ensuite seulement, lance :
 
