@@ -481,4 +481,4 @@ public enum OrderStatus
 4. Que gagne-t-on à empêcher la création d'un produit avec un prix négatif ?
 5. Pourquoi `OrderStatus` est-il préférable à une chaîne arbitraire ?
 6. Un `record` contenant une `List<T>` est-il profondément immuable ?
-7. Pourquoi `required` ne suffit-il pas à garantir qu'un nom est métierement valide ?
+7. Pourquoi `required` ne suffit-il pas à garantir qu'un nom est valide pour le métier ?
