@@ -1,12 +1,12 @@
 # Approfondissements .NET
 
-Ce dossier complète le **workbook v2**, qui reste le parcours principal à suivre dans l'ordre.
+Ce dossier complète le **parcours principal**, qui reste la formation à suivre dans l'ordre.
 
-La v2 est actuellement proposée dans la [PR #1](https://github.com/SimonGelbart/formation-dotnet/pull/1). Après sa fusion, son point d'entrée sera :
+Commence par :
 
-> [`workbook_v2/README.md`](../workbook_v2/README.md)
+> [`parcours/README.md`](../parcours/README.md)
 
-Le contenu présent ici n'est plus conçu comme une seconde formation linéaire. Utilise-le lorsqu'une notion rencontrée dans la v2 mérite une explication plus profonde, une nuance, un piège ou une décision de conception.
+Le contenu présent ici n'est pas conçu comme une seconde formation linéaire. Utilise-le lorsqu'une notion rencontrée dans le parcours mérite une explication plus profonde, une nuance, un piège ou une décision de conception.
 
 ## Comment utiliser cette référence
 
@@ -35,21 +35,21 @@ Tu peux donc ouvrir directement le chapitre qui répond à ta question, sans lir
 | quand introduire une couche ou un design pattern | [10 — Architecture et patterns](10-architecture-patterns.md) |
 | les décisions de conception derrière l'Order API | [11 — Étude de cas Order API](11-projet-fil-rouge.md) |
 
-## Relation avec le workbook v2
+## Relation avec le parcours principal
 
-Le workbook v2 choisit volontairement un niveau différent selon les sujets : **Pratiquer**, **Comprendre** ou **Repérer**. Cette référence sert surtout à approfondir ce qui a été classé « Comprendre » ou « Repérer ».
+Le parcours principal choisit volontairement un niveau différent selon les sujets : **Pratiquer**, **Comprendre** ou **Repérer**. Cette référence sert surtout à approfondir ce qui a été classé « Comprendre » ou « Repérer ».
 
 Exemples :
 
 ```text
-v2 : utiliser une interface et l'injection par constructeur
-ici : comprendre DI vs conteneur, method/property injection et captive dependency
+parcours : utiliser une interface et l'injection par constructeur
+ici     : comprendre DI vs conteneur, method/property injection et captive dependency
 
-v2 : filtrer avec LINQ
-ici : comprendre deferred execution, ré-énumération et coût des collections
+parcours : filtrer avec LINQ
+ici     : comprendre deferred execution, ré-énumération et coût des collections
 
-v2 : persister avec EF Core
-ici : comprendre IQueryable, change tracker, backing fields, loading et SQL généré
+parcours : persister avec EF Core
+ici     : comprendre IQueryable, change tracker, backing fields, loading et SQL généré
 ```
 
 ## Méthode de lecture
@@ -65,7 +65,7 @@ Pour un sujet qui mérite une expérience :
 6. comparer
 ```
 
-Mais contrairement à la v2, tous les exemples de ce dossier ne constituent pas un parcours à reproduire de bout en bout.
+Mais contrairement au parcours principal, tous les exemples de ce dossier ne constituent pas un parcours à reproduire de bout en bout.
 
 ## Référence technique
 
@@ -83,7 +83,7 @@ L'objectif est de comprendre des fondamentaux durables, pas d'apprendre une arch
 
 Elle ne doit pas :
 
-- dupliquer les applications guidées de `workbook_v2` ;
+- dupliquer les applications guidées de `parcours/` ;
 - imposer une interface ou un repository partout ;
 - ajouter des patterns simplement parce qu'ils existent ;
 - transformer tous les détails du runtime ou d'EF Core en prérequis pour continuer la formation.
