@@ -1,10 +1,10 @@
 # 10 — Architecture et design patterns : approfondissement
 
-> **Prérequis conseillé :** [workbook v2 — 10 Conception](../workbook_v2/10-conception.md).
+> **Prérequis conseillé :** [parcours principal — 10 Conception](../parcours/10-conception.md).
 >
 > **Niveau :** À approfondir pour responsabilités/couplage · Nuance pour Repository · Référence pour Factory, Adapter et Decorator.
 
-La v2 montre quand une conception commence à mériter une abstraction. Ce chapitre sert à raisonner sur les **coûts et bénéfices** de ces choix.
+Le parcours principal montre quand une conception commence à mériter une abstraction. Ce chapitre sert à raisonner sur les **coûts et bénéfices** de ces choix.
 
 ## 1. Une architecture contrôle surtout les dépendances
 
