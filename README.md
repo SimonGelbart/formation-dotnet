@@ -8,6 +8,7 @@ Une formation pour un développeur JavaScript/TypeScript qui découvre C# et le 
 |---|---|
 | Commencer ou reprendre une séance | [Guide pratique](parcours/GUIDE.md) |
 | Suivre la formation dans l'ordre | [Parcours principal](parcours/README.md) |
+| Explorer la version HTML interactive | [Cours Codebase-to-Course](course/README.md) |
 | Construire ma première API | [Atelier HTTP](parcours/ateliers/01-construire-api.md), après le chapitre 4 |
 | Passer mon API à SQLite | [Atelier persistance](parcours/ateliers/02-ajouter-sqlite.md), après le chapitre 6 |
 | Comprendre un mécanisme plus en détail | [Approfondissements](approfondissements/README.md) |
@@ -19,6 +20,8 @@ Une formation pour un développeur JavaScript/TypeScript qui découvre C# et le 
 Comprendre le trajet d'une requête, modifier une petite API, protéger une règle métier, sauvegarder des données et écrire un test utile. Le fil rouge commence par des produits, puis ajoute des commandes.
 
 Le parcours distingue **Pratiquer**, **Comprendre** et **Repérer**. Les approfondissements se consultent au besoin ; ils ne constituent pas une seconde formation à suivre en parallèle.
+
+La proposition dans `course/` assemble une version HTML interactive du même workbook. Les Markdown restent la référence détaillée et la source éditoriale ; le cours ajoute visualisations, quiz, flux et checkpoints.
 
 ## Vérifier l'état du support
 
