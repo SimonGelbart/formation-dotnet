@@ -6,7 +6,7 @@ Résultat : exécuter des tests qui détectent une régression du prix historiqu
 
 ## Lancer un premier test
 
-Le projet de référence est déjà configuré. Depuis `workbook_v2/exemples/02-api-sqlite` :
+Le projet de référence est déjà configuré. Depuis `parcours/exemples/02-api-sqlite` :
 
 ```bash
 dotnet test Catalogue.Tests/Catalogue.Tests.csproj --filter NegativePriceIsRejected
