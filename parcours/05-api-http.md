@@ -9,7 +9,7 @@ Résultat : créer un produit avec une requête HTTP, puis le retrouver.
 Ouvre [l'API mémoire](exemples/01-api-memoire/README.md) et suis ses commandes. Depuis la racine du dépôt :
 
 ```bash
-cd workbook_v2/exemples/01-api-memoire
+cd parcours/exemples/01-api-memoire
 dotnet run --urls http://localhost:5080
 ```
 
