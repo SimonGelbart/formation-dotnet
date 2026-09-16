@@ -1,4 +1,4 @@
-# Workbook v2 — Apprendre .NET en construisant une API
+# Parcours principal — Apprendre .NET en construisant une API
 
 Tu connais déjà les variables, les fonctions et les collections en JavaScript ou TypeScript. Tu découvres C#, le backend ou .NET : ce parcours est pour toi. Il ne suppose pas de connaissance de SQL.
 
@@ -29,7 +29,7 @@ Une approximation utile est autorisée : « une interface décrit ce qu'un objet
 | [10 — Faire évoluer la conception](10-conception.md) | Deux calculs de livraison | Responsabilités, SOLID, Strategy, architecture |
 | [Bilan et exercice autonome](11-bilan.md) | Une évolution menée seul | Modification de bout en bout |
 
-La [carte des notions](notions.md) explique où retrouver les sujets du premier workbook.
+La [carte des notions](notions.md) indique aussi où trouver les approfondissements complémentaires.
 
 ## Comment travailler
 
@@ -49,6 +49,10 @@ Deux applications indépendantes sont disponibles :
 Elles portent volontairement des noms de types identiques. **Ne les assemble pas dans la même application.** Arrête la première avant de lancer la seconde sur le même port. Les exercices console restent dans un troisième projet `Sandbox`.
 
 Tu peux construire progressivement ton propre projet et comparer, ou copier le point de contrôle pour reprendre après un blocage. Le code de référence est une correction à lire par petites étapes, pas du code à mémoriser.
+
+## Approfondir quand nécessaire
+
+Le dossier [`../approfondissements/`](../approfondissements/README.md) complète ce parcours. Il n'est pas nécessaire de le lire en parallèle : utilise-le lorsqu'une notion mérite davantage de détails, de nuances ou d'explications internes.
 
 ## Ce qui reste volontairement simple
 
