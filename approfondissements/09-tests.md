@@ -1,8 +1,14 @@
 # 9 — Tester une application .NET
 
-## Objectifs
+> **Prérequis conseillé :** [parcours principal — 09](../parcours/09-tests.md).
+>
+> **Niveau :** À approfondir pour frontières de tests · Nuance pour fakes et providers · Référence pour factory d’intégration.
+>
+> **Statut des exemples :** extraits indépendants et variantes de conception. Ils ne constituent pas une suite de modifications à appliquer à Catalogue.Api. Les types manquants sont à définir dans une expérience séparée. Pour le code exécutable et ses signatures exactes, consulte les [applications du parcours](../parcours/README.md#environnement-et-applications-de-référence).
 
-À la fin de ce chapitre, tu dois savoir :
+## Questions abordées
+
+Cette référence aide à comprendre, selon ton besoin :
 
 - distinguer test unitaire et test d'intégration ;
 - utiliser Arrange / Act / Assert ;
@@ -16,6 +22,10 @@
 - choisir une frontière de test en fonction du risque à couvrir.
 
 ---
+
+## Variante utilisée dans les exemples
+
+Les tests ci-dessous utilisent notamment `new Order(customerId)` et un IOrderRepository. Ces types appartiennent à une variante indépendante. Pour exécuter directement des tests du dépôt, utilise [Catalogue.Tests](../parcours/exemples/02-api-sqlite/Catalogue.Tests/DomainTests.cs), dont le modèle et la factory sont cohérents avec Catalogue.Api. Ne mélange pas les deux factories.
 
 # 1. Pourquoi tester ?
 
@@ -454,7 +464,7 @@ Pose toujours la question :
 
 ---
 
-# 13. Plan de tests du projet fil rouge
+# 13. Plan de tests d’une variante Order API
 
 ## Domaine
 
@@ -489,7 +499,7 @@ Pose toujours la question :
 
 ---
 
-## Exercice final
+## Exercice facultatif
 
 Construis trois tests pour la même fonctionnalité « confirmer une commande » :
 

@@ -4,6 +4,8 @@
 
 Résultat : le terminal affiche `Bonjour .NET`.
 
+Avant de commencer, suis le [guide pratique](GUIDE.md) pour récupérer le dépôt et choisir un espace de travail.
+
 ## Préparer l'environnement
 
 Installe le **SDK .NET 10** depuis la [page officielle .NET](https://dotnet.microsoft.com/download/dotnet/10.0). Le runtime exécute une application ; le SDK contient les outils pour la développer. Installe le SDK correspondant à ton système et à l'architecture de ta machine, puis rouvre le terminal.

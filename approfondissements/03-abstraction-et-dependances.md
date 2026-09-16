@@ -1,8 +1,14 @@
 # 3 — Abstraction, interfaces et dépendances
 
-## Objectifs
+> **Prérequis conseillé :** [parcours principal — 04](../parcours/04-dependances.md).
+>
+> **Niveau :** À approfondir pour interfaces et DI · Nuance pour durées de vie · Référence pour formes d’injection.
+>
+> **Statut des exemples :** extraits indépendants et variantes de conception. Ils ne constituent pas une suite de modifications à appliquer à Catalogue.Api. Les types manquants sont à définir dans une expérience séparée. Pour le code exécutable et ses signatures exactes, consulte les [applications du parcours](../parcours/README.md#environnement-et-applications-de-référence).
 
-À la fin de ce chapitre, tu dois savoir :
+## Questions abordées
+
+Cette référence aide à comprendre, selon ton besoin :
 
 - distinguer classe concrète, classe abstraite et interface ;
 - comprendre une différence importante entre les interfaces TypeScript et C# ;
@@ -16,7 +22,7 @@
 - identifier un problème de durée de vie ;
 - utiliser SOLID comme outil de raisonnement et non comme liste à réciter.
 
-> Dans ce chapitre, les exemples de repository sont volontairement **synchrones**. `Task`, `async` et `CancellationToken` seront introduits au chapitre 5, où nous ferons évoluer ces contrats.
+> Dans ce chapitre, les exemples de repository sont volontairement **synchrones**. La [référence async](05-exceptions-et-async.md) compare ce contrat à une variante asynchrone.
 
 ---
 
@@ -285,7 +291,7 @@ La DI est le principe ; le conteneur est un outil.
 
 ## 7. Lifetimes
 
-Les lifetimes seront observés concrètement avec ASP.NET Core au chapitre 7. Pour l'instant, comprends leur intention.
+Observe les lifetimes dans le [parcours HTTP](../parcours/05-api-http.md). Ici, leurs définitions servent de référence.
 
 ### `Transient`
 
@@ -427,7 +433,7 @@ Le problème n'est pas le mot-clé `new` en lui-même : c'est le fait de constru
 
 ---
 
-## Application au projet fil rouge
+## Expérience facultative — variante indépendante
 
 À ce stade, garde le contrat simple et synchrone :
 
@@ -450,7 +456,7 @@ public class InMemoryOrderRepository : IOrderRepository
 
 Injecte ensuite le repository dans `OrderService`.
 
-Au chapitre 5, ce contrat évoluera volontairement vers :
+Une variante asynchrone, décrite dans [Exceptions et async](05-exceptions-et-async.md), utilise :
 
 ```text
 Task / Task<T>
@@ -462,7 +468,7 @@ lorsque ces notions auront été expliquées.
 
 ### Checkpoint
 
-Tu dois pouvoir expliquer :
+Questions pour vérifier ta compréhension, sans prérequis pour poursuivre le parcours :
 
 1. pourquoi `new Order()` est normal alors que `new SqlOrderRepository()` dans `OrderService` peut poser problème ;
 2. la différence entre compatibilité structurelle TypeScript et implémentation explicite d'une interface C# ;
