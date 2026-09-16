@@ -1,22 +1,14 @@
-# 10 — Architecture et design patterns
+# 10 — Architecture et design patterns : approfondissement
 
-## Objectifs
+> **Prérequis conseillé :** [workbook v2 — 10 Conception](../workbook_v2/10-conception.md).
+>
+> **Niveau :** À approfondir pour responsabilités/couplage · Nuance pour Repository · Référence pour Factory, Adapter et Decorator.
 
-À la fin de ce chapitre, tu dois savoir :
+La v2 montre quand une conception commence à mériter une abstraction. Ce chapitre sert à raisonner sur les **coûts et bénéfices** de ces choix.
 
-- raisonner en termes de responsabilités, cohésion et couplage ;
-- comprendre qu'une architecture n'est pas une arborescence de dossiers ;
-- choisir une séparation en couches seulement lorsqu'elle apporte de la valeur ;
-- comprendre le sens des dépendances entre projets ;
-- placer les règles métier au bon endroit ;
-- reconnaître Strategy, Factory, Adapter, Decorator et Repository ;
-- introduire un pattern à partir d'un problème concret, pas pour « cocher une case ».
+## 1. Une architecture contrôle surtout les dépendances
 
----
-
-# 1. Une architecture contrôle les dépendances
-
-Une architecture ne se résume pas à :
+Une architecture n'est pas seulement :
 
 ```text
 Controllers/
@@ -24,34 +16,30 @@ Services/
 Repositories/
 ```
 
-Elle décrit surtout :
+Elle répond surtout à :
 
-- qui connaît qui ;
-- quelles responsabilités vivent où ;
-- quelles dépendances sont autorisées ;
-- quelles parties peuvent évoluer indépendamment.
+- qui connaît qui ?
+- quelle responsabilité vit où ?
+- quelles dépendances sont autorisées ?
+- quelles parties peuvent évoluer indépendamment ?
 
-Une architecture très simple peut suffire :
+Une application simple peut rester :
 
 ```text
 Controller
    ↓
 Service
    ↓
-Repository
-   ↓
-Database
+DbContext / Repository
 ```
 
-Si l'application reste petite et compréhensible, ajouter des couches peut coûter plus qu'elles ne rapportent.
+Ajouter une couche doit résoudre un problème identifiable.
 
----
+## 2. Cohésion et couplage
 
-# 2. Cohésion et couplage
+### Cohésion
 
-## Cohésion
-
-Une classe cohésive regroupe des éléments qui appartiennent naturellement à la même responsabilité.
+Une classe cohésive regroupe des comportements qui appartiennent à la même responsabilité.
 
 ```text
 Order
@@ -60,168 +48,108 @@ Order
 → calculer le total
 ```
 
-## Couplage
+### Couplage
 
 Deux composants sont couplés lorsque l'un dépend de l'autre.
 
-Le but n'est pas d'avoir zéro couplage. Une application doit relier ses composants.
+Le but n'est pas zéro couplage. Une application doit relier ses composants.
 
 On cherche plutôt :
 
 ```text
 forte cohésion
 +
-couplage maîtrisé
+dépendances compréhensibles
 ```
 
----
+## 3. Où placer une règle métier ?
 
-# 3. Où placer la logique métier ?
+Si une règle reste vraie même sans HTTP, elle n'appartient probablement pas au Controller.
 
-Version problématique :
+Mauvais symptôme :
 
 ```csharp
 [HttpPost("{id}/confirm")]
-public async Task<IActionResult> Confirm(
-    Guid id,
-    CancellationToken cancellationToken)
+public async Task<IActionResult> Confirm(Guid id)
 {
-    // lecture DB
-    // validation métier
-    // changement de statut
-    // notification
-    // mapping HTTP
+    // charger en DB
+    // vérifier que la commande n'est pas vide
+    // changer le statut
+    // envoyer une notification
+    // choisir le code HTTP
 }
 ```
 
-Le Controller mélange HTTP, application, métier et infrastructure.
+Séparation plus claire :
 
-Une séparation plus claire :
+```text
+Controller
+→ traduit HTTP
 
-```csharp
-await orderService.ConfirmAsync(
-    id,
-    cancellationToken);
+Service applicatif
+→ orchestre le cas d'usage
+
+Order
+→ protège la règle métier
 ```
 
-et dans le domaine :
+## 4. Quand découper en plusieurs projets ?
 
-```csharp
-order.Confirm();
-```
-
-Demande-toi :
-
-> cette règle a-t-elle du sens même si demain l'application n'est plus appelée via HTTP ?
-
-Si oui, elle n'appartient probablement pas au Controller.
-
----
-
-# 4. Quand découper en plusieurs projets ?
-
-Tu peux commencer avec :
+Commence simple si le projet est simple :
 
 ```text
 OrderApi
 OrderApi.Tests
 ```
 
-Puis, si le projet grossit, envisager :
-
-```text
-OrderApi.Api
-OrderApi.Application
-OrderApi.Domain
-OrderApi.Infrastructure
-OrderApi.Tests
-```
-
-Responsabilités possibles :
+Des projets séparés deviennent intéressants lorsque les frontières apportent quelque chose :
 
 ```text
 Api
-→ ASP.NET Core, HTTP, DTOs
+→ HTTP et composition
 
 Application
-→ orchestration des use cases
+→ cas d'usage
 
 Domain
-→ concepts et règles métier
+→ règles métier
 
 Infrastructure
-→ EF Core, fichiers, clients externes
+→ EF, fichiers, clients externes
 ```
 
-Le sens des références compte. Une séparation en quatre projets ne sert à rien si tout référence tout.
-
----
-
-# 5. Ne pas multiplier les abstractions gratuitement
-
-Mauvais raisonnement :
-
-> une bonne application .NET possède une interface pour chaque classe et un repository pour chaque table.
-
-Meilleure question :
-
-> quel problème concret cette abstraction résout-elle ?
-
-Une abstraction ajoute aussi des fichiers, du mapping, de la navigation et de la maintenance.
-
----
-
-# 6. Refactoring guidé du projet fil rouge
-
-Avant de créer plusieurs projets, observe d'abord les symptômes :
-
-- DTOs HTTP utilisés dans le domaine ;
-- EF Core référencé partout ;
-- Controllers contenant du métier ;
-- composition DI difficile à lire ;
-- tests connaissant trop de détails techniques.
-
-Puis déplace une responsabilité à la fois.
-
-### Exercice
-
-Complète :
+Avant une extraction, complète :
 
 ```text
-Je déplace __________ vers __________
-parce que __________
-ce qui réduit la dépendance entre __________ et __________.
+Je déplace ______ vers ______
+parce que ______
+ce qui réduit la dépendance entre ______ et ______.
 ```
 
-Si tu ne peux pas compléter cette phrase clairement, l'extraction n'est peut-être pas justifiée.
+Si la phrase est artificielle, l'extraction l'est peut-être aussi.
 
----
+## 5. Une abstraction a aussi un coût
 
-# 7. Design patterns : partir du problème
-
-Un pattern est un **nom donné à une solution récurrente**.
-
-Mauvaise démarche :
+Une interface, une couche ou un pattern ajoute :
 
 ```text
-j'ai appris Factory
-→ je cherche où mettre une Factory
+fichiers
+navigation
+indirection
+mapping éventuel
+configuration DI
+surface de maintenance
 ```
 
-Meilleure démarche :
+Question à poser :
 
-```text
-j'ai un problème récurrent de création
-→ une Factory ressemble peut-être à une bonne solution
-```
+> quel problème devient réellement plus simple grâce à cette abstraction ?
 
----
+## 6. Strategy
 
-# 8. Strategy
+### Symptôme
 
-## Problème
-
-Plusieurs algorithmes de frais de livraison existent :
+Plusieurs algorithmes doivent être interchangeables :
 
 ```text
 Standard
@@ -229,7 +157,7 @@ Express
 International
 ```
 
-Contrat :
+### Solution possible
 
 ```csharp
 public interface IShippingStrategy
@@ -237,8 +165,6 @@ public interface IShippingStrategy
     decimal Calculate(Order order);
 }
 ```
-
-Implémentations :
 
 ```csharp
 public sealed class StandardShippingStrategy
@@ -256,32 +182,19 @@ public sealed class ExpressShippingStrategy
 }
 ```
 
-Consommateur :
+### Coût
 
-```csharp
-public sealed class ShippingCalculator
-{
-    private readonly IShippingStrategy _strategy;
+Un contrat et plusieurs types à naviguer.
 
-    public ShippingCalculator(IShippingStrategy strategy)
-    {
-        _strategy = strategy;
-    }
+### Ne pas l'utiliser si…
 
-    public decimal Calculate(Order order)
-        => _strategy.Calculate(order);
-}
-```
+Il n'existe qu'un calcul simple sans variation réelle.
 
-**Strategy** encapsule des algorithmes interchangeables derrière un même contrat.
+## 7. Factory
 
----
+### Symptôme
 
-# 9. Factory
-
-## Problème
-
-La stratégie doit être choisie à partir d'une information runtime :
+Le choix ou la construction d'un objet devient une responsabilité non triviale.
 
 ```csharp
 public enum ShippingMode
@@ -292,42 +205,42 @@ public enum ShippingMode
 ```
 
 ```csharp
-public sealed class ShippingStrategyFactory
+public IShippingStrategy Create(ShippingMode mode)
 {
-    public IShippingStrategy Create(ShippingMode mode)
+    return mode switch
     {
-        return mode switch
-        {
-            ShippingMode.Standard
-                => new StandardShippingStrategy(),
-
-            ShippingMode.Express
-                => new ExpressShippingStrategy(),
-
-            _ => throw new ArgumentOutOfRangeException(
-                nameof(mode))
-        };
-    }
+        ShippingMode.Standard => new StandardShippingStrategy(),
+        ShippingMode.Express => new ExpressShippingStrategy(),
+        _ => throw new ArgumentOutOfRangeException(nameof(mode))
+    };
 }
 ```
 
-Une Factory vaut son coût lorsqu'elle encapsule une vraie décision ou une construction non triviale.
+### Coût
 
-Elle ne doit pas devenir une manière détournée de reconstruire à la main tout le graphe que le conteneur DI sait déjà composer.
+Une indirection de construction supplémentaire.
 
----
+### Ne pas l'utiliser si…
 
-# 10. Adapter
-
-## Problème
-
-Une bibliothèque externe expose :
+Le code construit simplement :
 
 ```csharp
-ThirdPartyMailClient.SendMessageAsync(...)
+new Product(name, price)
 ```
 
-mais notre application veut :
+ou si le conteneur DI sait déjà composer le graphe sans décision métier particulière.
+
+## 8. Adapter
+
+### Symptôme
+
+Un SDK tiers expose un contrat qui fuit dans l'application :
+
+```text
+ThirdPartyMailClient.SendMessageAsync
+```
+
+alors que le métier attend :
 
 ```csharp
 public interface IOrderNotifier
@@ -338,30 +251,7 @@ public interface IOrderNotifier
 }
 ```
 
-Adapter :
-
-```csharp
-public sealed class ThirdPartyMailAdapter
-    : IOrderNotifier
-{
-    private readonly ThirdPartyMailClient _client;
-
-    public ThirdPartyMailAdapter(
-        ThirdPartyMailClient client)
-    {
-        _client = client;
-    }
-
-    public Task OrderConfirmedAsync(
-        Order order,
-        CancellationToken cancellationToken)
-    {
-        return _client.SendMessageAsync(
-            $"Order {order.Id} confirmed",
-            cancellationToken);
-    }
-}
-```
+### Solution possible
 
 ```text
 Application
@@ -373,19 +263,24 @@ ThirdPartyMailAdapter
 SDK tiers
 ```
 
-**Adapter** protège l'application du contrat particulier d'un composant externe.
+### Coût
 
----
+Mapping et type supplémentaire.
 
-# 11. Decorator
+### Ne pas l'utiliser si…
 
-## Problème
+Le SDK n'est utilisé qu'à un endroit trivial et son contrat ne contamine aucune autre partie intéressante de l'application.
 
-Ajouter du logging sans modifier le notifier principal.
+## 9. Decorator
+
+### Symptôme
+
+Ajouter un comportement transversal autour d'un collaborateur existant sans modifier son implémentation principale.
+
+Exemple : logging autour d'un notifier.
 
 ```csharp
-public sealed class LoggingOrderNotifier
-    : IOrderNotifier
+public sealed class LoggingOrderNotifier : IOrderNotifier
 {
     private readonly IOrderNotifier _inner;
     private readonly ILogger<LoggingOrderNotifier> _logger;
@@ -406,24 +301,24 @@ public sealed class LoggingOrderNotifier
             "Sending confirmation for order {OrderId}",
             order.Id);
 
-        await _inner.OrderConfirmedAsync(
-            order,
-            cancellationToken);
+        await _inner.OrderConfirmedAsync(order, cancellationToken);
     }
 }
 ```
 
-Le Decorator implémente le même contrat et enveloppe un autre composant.
+### Coût
 
----
+Chaîne d'objets plus difficile à suivre si les decorators se multiplient.
 
-# 12. Repository
+### Ne pas l'utiliser si…
 
-## Problème
+Une simple ligne locale suffit et le comportement ne doit pas être réutilisé ou composé.
 
-L'application veut retrouver et sauvegarder des commandes sans dépendre partout d'EF Core.
+## 10. Repository
 
-Pour ce workbook, le contrat reste volontairement simple :
+### Symptôme
+
+L'application veut une frontière de persistence adaptée à ses cas d'usage plutôt que dépendre d'EF partout.
 
 ```csharp
 public interface IOrderRepository
@@ -439,25 +334,15 @@ public interface IOrderRepository
 }
 ```
 
-`Add` reste synchrone parce qu'il ajoute l'objet au stockage local ou au change tracker. `SaveChangesAsync` représente la vraie sauvegarde I/O.
+### Coût
 
-La frontière est explicite :
-
-```text
-charger
-→ modifier
-→ sauvegarder
-```
-
-Ce choix est pédagogique. Une autre architecture pourrait laisser l'application utiliser directement `DbContext` ou séparer cette responsabilité différemment.
+Une couche supplémentaire qui peut finir par simplement recopier `DbSet<T>`.
 
 ### Nuance importante
 
-EF Core possède déjà `DbContext` et `DbSet<T>`.
+EF Core fournit déjà `DbContext` et `DbSet<T>`. Utiliser directement `DbContext` dans un service applicatif peut être parfaitement raisonnable.
 
-Un repository supplémentaire n'est donc **pas automatiquement nécessaire**.
-
-Évite le repository générique créé mécaniquement pour chaque table :
+Un repository est plus intéressant lorsqu'il exprime une frontière ou des opérations utiles au métier de l'application, pas lorsqu'il ajoute mécaniquement :
 
 ```text
 GetAll
@@ -467,43 +352,53 @@ Update
 Delete
 ```
 
-Une frontière repository est plus intéressante lorsqu'elle correspond à un besoin réel de l'application.
+pour chaque table.
 
----
+## 11. SOLID comme questions de revue
 
-# 13. Pattern ou simple code ?
+Ne récite pas les acronymes. Pose des questions :
 
-Pour chaque cas, choisis uniquement si nécessaire :
+```text
+SRP
+→ combien de raisons différentes font changer cette classe ?
 
-1. trois algorithmes de remise interchangeables ;
-2. SDK externe incompatible avec notre contrat ;
-3. logging autour de plusieurs implémentations ;
-4. création d'un simple `Product(Name, Price)` ;
-5. stratégie choisie selon un mode runtime.
+OCP
+→ ajouter un comportement impose-t-il de modifier tous les consommateurs ?
 
-<details>
-<summary>Correction possible</summary>
+LSP
+→ l'implémentation respecte-t-elle réellement les attentes du contrat ?
 
-1. Strategy.
-2. Adapter.
-3. Decorator.
-4. Aucun pattern particulier.
-5. Une Factory peut être pertinente si cette décision constitue une responsabilité réelle.
-</details>
+ISP
+→ le consommateur dépend-il d'opérations dont il n'a pas besoin ?
 
----
+DIP
+→ une règle importante dépend-elle inutilement d'un détail technique ?
+```
 
-# 14. Checkpoint architectural
+## 12. Pattern ou code simple ?
+
+Pour chaque situation, commence par le problème :
+
+| Situation | Première piste |
+|---|---|
+| plusieurs algorithmes interchangeables | Strategy |
+| contrat externe incompatible | Adapter |
+| comportement autour d'un collaborateur | Decorator |
+| construction runtime non triviale | éventuellement Factory |
+| simple création de donnée | aucun pattern particulier |
+| persistence déjà naturellement exprimée par EF | peut-être aucun Repository supplémentaire |
+
+## 13. Checkpoint
 
 Tu dois pouvoir expliquer :
 
-- pourquoi davantage de couches n'est pas automatiquement meilleur ;
+- pourquoi plus de couches n'est pas automatiquement mieux ;
 - différence entre cohésion et couplage ;
-- pourquoi les règles métier ne devraient pas vivre dans le Controller ;
-- ce qu'une séparation physique en projets change réellement ;
-- pourquoi une interface pour chaque classe est souvent du bruit ;
+- pourquoi une règle métier ne devrait pas dépendre de HTTP ;
+- ce qu'un `ProjectReference` change réellement dans le sens des dépendances ;
+- pourquoi une interface par classe crée souvent du bruit ;
 - quel problème concret Strategy, Factory, Adapter et Decorator résolvent ;
-- pourquoi un Repository autour d'EF Core mérite une justification ;
-- pourquoi `Add` peut rester synchrone alors que `SaveChangesAsync` est asynchrone.
+- pourquoi un Repository autour d'EF mérite une justification ;
+- quel coût supplémentaire introduit chaque abstraction.
 
-Le chapitre suivant reprend **l'Order API entière** et applique ces décisions au fil de l'évolution du projet.
+Pour voir ces choix appliqués ensemble, consulte l'[étude de cas Order API](11-projet-fil-rouge.md).
