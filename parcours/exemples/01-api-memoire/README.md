@@ -5,7 +5,7 @@ Correction exécutable du [chapitre 5](../../05-api-http.md). SDK .NET 10 requis
 Depuis la racine du dépôt :
 
 ```bash
-cd workbook_v2/exemples/01-api-memoire
+cd parcours/exemples/01-api-memoire
 dotnet build
 dotnet run --urls http://localhost:5080
 ```
