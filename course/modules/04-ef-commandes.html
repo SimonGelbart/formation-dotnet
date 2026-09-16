@@ -1,0 +1,51 @@
+<section class="module" id="module-4">
+  <div class="module-content">
+    <header class="module-header animate-in"><span class="module-number">04</span><h1 class="module-title">Persister avec EF Core, puis protéger une commande</h1><p class="module-subtitle">Changer le stockage sans changer le contrat HTTP, comprendre la frontière de sauvegarde puis faire vivre des règles métier sur une relation SQL.</p><div class="levels"><span class="level">Pratiquer · migrations et SQLite</span><span class="level">Comprendre · tracking et IQueryable</span><span class="level">Pratiquer · relations et règles métier</span></div></header>
+
+    <section class="screen animate-in">
+      <h2 class="screen-heading">Atelier SQLite : le même HTTP, un autre stockage</h2>
+      <div class="pipeline"><div class="pipe">Controller</div><div class="arrow">→</div><div class="pipe">ProductService</div><div class="arrow">→</div><div class="pipe">AppDbContext</div><div class="arrow">→</div><div class="pipe">SQLite</div></div>
+      <div class="translation"><pre class="code">builder.Services.AddDbContext&lt;AppDbContext&gt;(options =&gt;
+    options.UseSqlite(builder.Configuration.GetConnectionString("Database")));
+builder.Services.AddScoped&lt;ProductService&gt;();</pre><div class="explain"><strong>Le changement important</strong><p>La base porte désormais l'état durable. Le service n'a plus besoin de survivre entre les requêtes : il devient scoped avec le DbContext.</p><p>Le Controller évolue vers <code>async</code> parce que les lectures et la sauvegarde deviennent asynchrones.</p></div></div>
+      <div class="timeline"><div class="timeline-item"><span class="timeline-index">1</span><div><strong>Ajouter les packages EF Core</strong><p>Provider SQLite + outils de design.</p></div></div><div class="timeline-item"><span class="timeline-index">2</span><div><strong>Créer la migration</strong><p><code>dotnet ef migrations add InitialCreate</code> décrit l'évolution du schéma.</p></div></div><div class="timeline-item"><span class="timeline-index">3</span><div><strong>Appliquer</strong><p><code>dotnet ef database update</code> crée ou met à jour la base.</p></div></div></div>
+    </section>
+
+    <section class="screen animate-in">
+      <h2 class="screen-heading">La frontière de sauvegarde</h2>
+      <div class="flow" data-steps="Product est créé en mémoire|DbSet.Add demande à EF de suivre la nouvelle entité|SaveChangesAsync traduit les changements en SQL|SQLite persiste la ligne">
+        <div class="flow-actors"><div class="flow-actor">new Product</div><div class="flow-actor">DbSet.Add</div><div class="flow-actor">SaveChangesAsync</div><div class="flow-actor">SQLite</div></div><button class="action flow-next" type="button">Étape suivante</button><p class="flow-status">Observe ce qui change réellement la base.</p>
+      </div>
+      <div class="translation"><pre class="code">_db.Products.Add(product);
+await _db.SaveChangesAsync(cancellationToken);</pre><div class="explain"><strong>Deux opérations différentes</strong><p><code>Add</code> fait connaître l'entité au contexte. <code>SaveChangesAsync</code> envoie les changements à la base.</p><p>Si tu retires la sauvegarde, le POST peut fabriquer un objet et répondre, mais un GET suivant ne retrouvera rien.</p></div></div>
+      <div class="callout"><strong>IQueryable.</strong> Tant que le pipeline reste côté EF avant <code>ToListAsync</code>, il peut être traduit en SQL. Charger toute la table puis filtrer change le lieu du travail.</div>
+    </section>
+
+    <section class="screen animate-in">
+      <h2 class="screen-heading">Une commande garde l'histoire, pas le catalogue actuel</h2>
+      <div class="grid"><div class="card"><h3>Catalogue</h3><p>Le produit peut passer de 40 € à 50 €, puis même être supprimé.</p></div><div class="card"><h3>Ligne de commande</h3><p>Elle copie <strong>nom + prix</strong> au moment de l'ajout. L'ancien achat reste lisible et son total ne bouge pas.</p></div></div>
+      <div class="translation"><pre class="code">public void AddItem(Product product, int quantity)
+{
+    if (Status != OrderStatus.Draft)
+        throw new OrderConflictException(
+            "Une commande confirmée ne peut plus être modifiée.");
+    if (quantity &lt;= 0)
+        throw new ArgumentOutOfRangeException(nameof(quantity));
+    _items.Add(new OrderItem(
+        Id, product.Id, product.Name, product.Price, quantity));
+}</pre><div class="explain"><strong>Règle métier matérialisée</strong><p>La commande refuse toute modification après confirmation et interdit une quantité non positive.</p><p>Le snapshot évite de recalculer le passé à partir du catalogue présent.</p></div></div>
+      <div class="pipeline"><div class="pipe">Order</div><div class="arrow">1 → n</div><div class="pipe">OrderItem</div><div class="arrow">historique</div><div class="pipe">ProductId sans FK catalogue</div></div>
+    </section>
+
+    <section class="screen animate-in">
+      <h2 class="screen-heading">HTTP traduit les situations, le domaine protège la règle</h2>
+      <table><thead><tr><th>Situation</th><th>Statut</th></tr></thead><tbody><tr><td>Créer une commande</td><td>201</td></tr><tr><td>Ajouter / confirmer avec succès</td><td>204</td></tr><tr><td>Commande ou produit absent</td><td>404</td></tr><tr><td>Quantité invalide</td><td>400</td></tr><tr><td>Commande vide / déjà confirmée</td><td>409</td></tr></tbody></table>
+      <div class="callout"><strong>Separation utile.</strong> <code>Order</code> décide qu'une opération est interdite. <code>OrderConflictHandler</code> décide que ce conflit devient HTTP 409 avec ProblemDetails.</div>
+    </section>
+
+    <section class="screen animate-in">
+      <div class="quiz" data-success="Exact : la ligne de commande contient son propre prix historique." data-retry="Le catalogue donne le prix actuel ; la commande doit conserver le passé."><h3>Scénario métier</h3><p>Tu ajoutes 2 unités à 40 €, puis le catalogue passe à 50 €. Quel total doit afficher la commande ?</p><div class="quiz-options"><button class="quiz-option" data-correct="true">80 €</button><button class="quiz-option" data-correct="false">100 €</button><button class="quiz-option" data-correct="false">La commande doit être recalculée à la lecture</button></div><div class="quiz-feedback" aria-live="polite"></div></div>
+      <div class="source-links"><a href="../parcours/07-persistance.md">Chapitre 07</a><a href="../parcours/08-commandes.md">Chapitre 08</a><a href="../parcours/ateliers/02-ajouter-sqlite.md">Atelier SQLite</a><a href="../approfondissements/08-sql-et-ef-core.md">Approfondir EF Core</a></div>
+    </section>
+  </div>
+</section>

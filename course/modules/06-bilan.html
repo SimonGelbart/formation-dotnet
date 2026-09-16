@@ -1,0 +1,31 @@
+<section class="module" id="module-6">
+  <div class="module-content">
+    <header class="module-header animate-in"><span class="module-number">06</span><h1 class="module-title">Bilan : réaliser une évolution de bout en bout</h1><p class="module-subtitle">Le critère final n'est pas de réciter les concepts : c'est de modifier l'application en sachant suivre la donnée, protéger la règle, faire évoluer la base et vérifier le résultat.</p><div class="levels"><span class="level">Pratiquer · évolution complète</span><span class="level">Comprendre · trajet de la donnée</span><span class="level">Repérer · approfondissements</span></div></header>
+
+    <section class="screen animate-in">
+      <h2 class="screen-heading">Défi final : ajouter une description facultative</h2>
+      <div class="flow" data-steps="Le contrat HTTP accepte Description|Le Controller transmet la valeur|Product protège et porte la donnée|Le service orchestre la sauvegarde|Une nouvelle migration ajoute la colonne nullable|Un test HTTP vérifie POST → GET → persistance">
+        <div class="flow-actors"><div class="flow-actor">DTO</div><div class="flow-actor">Controller</div><div class="flow-actor">Product</div><div class="flow-actor">Service</div><div class="flow-actor">Migration</div><div class="flow-actor">Test</div></div><button class="action flow-next" type="button">Suivre l'évolution</button><p class="flow-status">Même changement, plusieurs frontières.</p>
+      </div>
+      <div class="checkpoint"><input type="checkbox" id="m6-c1"><label for="m6-c1">L'ancien POST sans description continue de fonctionner.</label></div><div class="checkpoint"><input type="checkbox" id="m6-c2"><label for="m6-c2">POST/PUT acceptent la description et GET la renvoie.</label></div><div class="checkpoint"><input type="checkbox" id="m6-c3"><label for="m6-c3">Une nouvelle migration ajoute la colonne sans supprimer l'historique.</label></div><div class="checkpoint"><input type="checkbox" id="m6-c4"><label for="m6-c4">La donnée survit au redémarrage et un test protège l'évolution.</label></div><div class="checkpoint"><input type="checkbox" id="m6-c5"><label for="m6-c5">Les tests existants restent verts.</label></div>
+    </section>
+
+    <section class="screen animate-in">
+      <h2 class="screen-heading">Carte de compétences</h2>
+      <div class="concept-map"><div class="concept"><strong>Pratiquer</strong><span>Refaire avec peu d'aide</span><p>Créer un objet, LINQ, Controller, DTO, sauvegarde EF, test métier.</p></div><div class="concept"><strong>Comprendre</strong><span>Expliquer et modifier</span><p>Encapsulation, DI, await, tracking, relation SQL, frontières de tests.</p></div><div class="concept"><strong>Repérer</strong><span>Reconnaître et retrouver</span><p>Middleware, N+1, patterns, chargements EF, options avancées.</p></div></div>
+      <div class="callout"><strong>Technique de déblocage.</strong> Si une syntaxe manque, cherche-la. Si le trajet d'une donnée est flou, reprends un appel unique avec le débogueur depuis HTTP jusqu'à la base.</div>
+    </section>
+
+    <section class="screen animate-in">
+      <h2 class="screen-heading">Approfondir au besoin</h2>
+      <div class="deepdives"><a href="../approfondissements/00-demarrage.md"><strong>00 · Bac à sable</strong><br>exécution et débogage</a><a href="../approfondissements/01-typescript-vers-csharp.md"><strong>01 · Types</strong><br>nullables, références, records</a><a href="../approfondissements/02-modelisation-objet.md"><strong>02 · Modélisation</strong><br>invariants, égalité, collections</a><a href="../approfondissements/03-abstraction-et-dependances.md"><strong>03 · Dépendances</strong><br>DI, conteneur, lifetimes</a><a href="../approfondissements/04-collections-et-linq.md"><strong>04 · LINQ</strong><br>coût et exécution différée</a><a href="../approfondissements/05-exceptions-et-async.md"><strong>05 · Async</strong><br>I/O, CPU, cancellation</a><a href="../approfondissements/06-ecosysteme-dotnet-et-nuget.md"><strong>06 · Écosystème</strong><br>SDK, NuGet, projets</a><a href="../approfondissements/07-aspnet-core.md"><strong>07 · ASP.NET Core</strong><br>pipeline d'une requête</a><a href="../approfondissements/08-sql-et-ef-core.md"><strong>08 · SQL / EF</strong><br>traduction, tracking, N+1</a><a href="../approfondissements/09-tests.md"><strong>09 · Tests</strong><br>choisir la frontière</a><a href="../approfondissements/10-architecture-patterns.md"><strong>10 · Architecture</strong><br>couches et patterns</a><a href="../approfondissements/11-projet-fil-rouge.md"><strong>11 · Étude de cas</strong><br>décisions de l'Order API</a></div>
+    </section>
+
+    <section class="screen animate-in">
+      <h2 class="screen-heading">Après le workbook</h2>
+      <div class="grid"><div class="card"><h3>Selon le besoin</h3><p>Authentification/autorisation, pagination, performances, déploiement, clients HTTP robustes et tests avec le moteur réel.</p></div><div class="card"><h3>Pas une obligation automatique</h3><p>CQRS, messaging, microservices ou Kubernetes ne sont pas « le niveau suivant » par défaut. Ils répondent à des problèmes spécifiques.</p></div></div>
+      <div class="quiz" data-success="Exact : l'évolution touche le contrat, le domaine, la persistance et les tests, sans jeter les migrations existantes." data-retry="Le défi final est une évolution de schéma, pas une réinitialisation du projet."><h3>Dernière décision</h3><p>Tu ajoutes <code>Description</code> au produit. Quelle stratégie respecte le parcours ?</p><div class="quiz-options"><button class="quiz-option" data-correct="false">Supprimer InitialCreate et recréer la base pour aller plus vite</button><button class="quiz-option" data-correct="true">Ajouter une nouvelle migration, mettre à jour DTO/modèle/service et protéger le flux par un test</button><button class="quiz-option" data-correct="false">Ajouter uniquement le champ dans ProductResponse</button></div><div class="quiz-feedback" aria-live="polite"></div></div>
+      <div class="source-links"><a href="../parcours/11-bilan.md">Bilan original</a><a href="../parcours/notions.md">Carte des notions</a><a href="../approfondissements/README.md">Référence d'approfondissement</a><a href="../PROGRAMME.md">Programme complet</a></div>
+    </section>
+  </div>
+</section>

@@ -1,0 +1,66 @@
+<section class="module" id="module-1">
+  <div class="module-content">
+    <header class="module-header animate-in">
+      <span class="module-number">01</span>
+      <h1 class="module-title">Prendre pied dans .NET</h1>
+      <p class="module-subtitle">Du premier <code>dotnet run</code> à un objet C# typé, en partant des repères JavaScript/TypeScript déjà connus.</p>
+      <div class="levels"><span class="level">Pratiquer · lancer et déboguer</span><span class="level">Pratiquer · types et classes</span><span class="level">Comprendre · SDK vs runtime</span></div>
+    </header>
+
+    <section class="screen animate-in">
+      <h2 class="screen-heading">Le premier trajet : fichier → compilation → exécution</h2>
+      <div class="pipeline">
+        <div class="pipe">Program.cs</div><div class="arrow">→</div><div class="pipe">dotnet run</div><div class="arrow">→</div><div class="pipe">compilation</div><div class="arrow">→</div><div class="pipe">Bonjour .NET</div>
+      </div>
+      <p class="lead">Le <abbr class="glossary" title="Kit de développement : compilateur, CLI, templates et outils.">SDK</abbr> sert à développer. Le runtime exécute l'application. Une erreur de type arrête le trajet avant l'exécution.</p>
+      <div class="translation">
+        <pre class="code">Console.WriteLine("Bonjour .NET");</pre>
+        <div class="explain"><strong>En clair</strong><p>Écris une ligne dans la console. <code>Program.cs</code> est le point d'entrée du petit projet Sandbox.</p></div>
+      </div>
+      <div class="checkpoint"><input type="checkbox" id="m1-c1"><label for="m1-c1">Je vois un SDK <code>10.0.x</code> avec <code>dotnet --list-sdks</code>.</label></div>
+      <div class="checkpoint"><input type="checkbox" id="m1-c2"><label for="m1-c2">Je peux placer un breakpoint et observer <code>price</code>, <code>quantity</code> et <code>total</code>.</label></div>
+    </section>
+
+    <section class="screen animate-in">
+      <h2 class="screen-heading">TypeScript → C# : même intention, contraintes plus explicites</h2>
+      <table>
+        <thead><tr><th>TypeScript</th><th>C# dans le parcours</th></tr></thead>
+        <tbody><tr><td><code>string</code></td><td><code>string</code></td></tr><tr><td><code>boolean</code></td><td><code>bool</code></td></tr><tr><td><code>number</code> entier</td><td><code>int</code></td></tr><tr><td><code>number</code> prix</td><td><code>decimal</code>, ex. <code>30m</code></td></tr><tr><td><code>null | undefined</code></td><td><code>string?</code> et <code>null</code></td></tr></tbody>
+      </table>
+      <div class="callout"><strong><code>var</code> n'est pas <code>any</code>.</strong> Le compilateur infère un type puis continue de le faire respecter.</div>
+    </section>
+
+    <section class="screen animate-in">
+      <h2 class="screen-heading">Une classe décrit, <code>new</code> crée</h2>
+      <div class="translation">
+        <pre class="code">var product = new Product();
+product.Name = "Clavier";
+product.Price = 30m;
+
+Console.WriteLine(product.TotalFor(2));
+
+public class Product
+{
+    public string Name { get; set; } = "";
+    public decimal Price { get; set; }
+
+    public decimal TotalFor(int quantity)
+    {
+        return Price * quantity;
+    }
+}</pre>
+        <div class="explain"><strong>Lecture guidée</strong><p><code>Product</code> décrit la forme et le comportement. <code>new Product()</code> crée une instance. Les propriétés portent les données ; la méthode calcule un résultat.</p><p>Le littéral <code>30m</code> force un <code>decimal</code>, utilisé ici pour les prix.</p></div>
+      </div>
+      <div class="compare"><div class="card"><h3>Valeur présente</h3><p><code>string name = "Clavier";</code></p></div><div class="card"><h3>Valeur facultative</h3><p><code>string? description = null;</code><br><code>description ?? "Sans description"</code></p></div></div>
+    </section>
+
+    <section class="screen animate-in">
+      <div class="quiz" data-success="Exact : le type de name est string dès l'inférence." data-retry="Le mot var n'enlève pas le typage statique.">
+        <h3>Prédiction</h3><p>Que se passe-t-il après <code>var name = "Alice";</code> si on écrit <code>name = 42;</code> ?</p>
+        <div class="quiz-options"><button class="quiz-option" data-correct="false">La valeur devient un nombre</button><button class="quiz-option" data-correct="true">Le code ne compile pas</button><button class="quiz-option" data-correct="false">Une exception est levée à l'exécution</button></div>
+        <div class="quiz-feedback" aria-live="polite"></div>
+      </div>
+      <div class="source-links"><a href="../parcours/00-demarrer.md">Chapitre 00</a><a href="../parcours/01-csharp.md">Chapitre 01</a><a href="../approfondissements/01-typescript-vers-csharp.md">Approfondir les types</a></div>
+    </section>
+  </div>
+</section>
