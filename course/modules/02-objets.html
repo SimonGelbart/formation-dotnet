@@ -1,0 +1,12 @@
+<section class="lesson" id="chapter-02" data-title="02 — Objets">
+  <header class="lesson-header"><span class="eyebrow">Chapitre 02 · Fondations</span><h1>Construire des objets cohérents</h1><p class="objective">Objectif : empêcher qu'un produit puisse exister avec un nom vide ou un prix négatif.</p><div class="levels"><span>Pratiquer · constructeur, encapsulation</span><span>Comprendre · valeur / référence</span></div></header>
+  <article><h2>La règle vit dans l'objet</h2><pre><code>public void ChangePrice(decimal price)
+{
+    if (price &lt; 0)
+        throw new ArgumentOutOfRangeException(nameof(price));
+    Price = price;
+}</code></pre><p><code>private set</code> empêche le code extérieur de contourner cette méthode.</p></article>
+  <div class="lesson-grid"><article><h2>Type valeur</h2><p>Copier un <code>int</code> copie sa valeur. Modifier la copie ne change pas l'original.</p></article><article><h2>Type référence</h2><p>Deux variables peuvent désigner le même objet. Modifier l'objet via l'une est visible via l'autre.</p></article></div>
+  <details class="check"><summary>Expérience</summary><p>Crée <code>other = product</code>, change le prix via <code>other</code> et observe <code>product.Price</code>. Tu verras la même instance.</p></details>
+  <a class="source" href="../parcours/02-objets.md">Ouvrir le chapitre Markdown complet →</a>
+</section>

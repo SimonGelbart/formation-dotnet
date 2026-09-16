@@ -1,0 +1,12 @@
+<section class="lesson" id="chapter-08" data-title="08 — Commandes">
+  <header class="lesson-header"><span class="eyebrow">Chapitre 08 · Backend</span><h1>Ajouter les commandes</h1><p class="objective">Objectif : créer une commande, ajouter des produits et conserver le prix historique même si le catalogue change.</p><div class="levels"><span>Pratiquer · relation et règles métier</span><span>Comprendre · historique, Include, 409</span></div></header>
+  <article><h2>Le catalogue dit le prix actuel, la commande garde l'histoire</h2><pre><code>public void AddItem(Product product, int quantity)
+{
+    if (Status == OrderStatus.Confirmed) throw new OrderConflictException();
+    if (quantity &lt;= 0) throw new ArgumentOutOfRangeException(nameof(quantity));
+    _items.Add(new OrderItem(Id, product.Id, product.Name, product.Price, quantity));
+}</code></pre><p>La ligne copie nom et prix au moment de l'ajout. Une modification ou suppression ultérieure du produit ne réécrit pas une ancienne commande.</p></article>
+  <aside class="note"><strong>Chargement nécessaire</strong><p><code>Include(o =&gt; o.Items)</code> charge les lignes utilisées pour calculer le total et vérifier qu'une commande n'est pas vide.</p></aside>
+  <div class="quiz" data-success="Exact : l'historique de la transaction doit rester stable." data-retry="Imagine une facture dont le total changerait après coup."><strong>Pourquoi copier le prix dans OrderItem ?</strong><div class="quiz-options"><button data-correct="false">Pour accélérer Guid.NewGuid()</button><button data-correct="true">Pour figer le prix de la commande</button><button data-correct="false">Parce qu'EF interdit les relations</button></div><p class="quiz-feedback"></p></div>
+  <a class="source" href="../parcours/08-commandes.md">Ouvrir le chapitre Markdown complet →</a>
+</section>

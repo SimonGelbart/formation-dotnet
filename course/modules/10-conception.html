@@ -1,0 +1,13 @@
+<section class="lesson" id="chapter-10" data-title="10 — Conception">
+  <header class="lesson-header"><span class="eyebrow">Chapitre 10 · Qualité</span><h1>Faire évoluer la conception</h1><p class="objective">Objectif : ajouter plusieurs calculs de livraison sans accumuler des conditions dans Checkout.</p><div class="levels"><span>Pratiquer · Strategy</span><span>Comprendre · responsabilités, couplage, SOLID</span></div></header>
+  <article><h2>Strategy = un algorithme interchangeable</h2><pre><code>public class Checkout
+{
+    private readonly IShippingStrategy _shipping;
+    public Checkout(IShippingStrategy shipping) => _shipping = shipping;
+    public decimal Total(decimal subtotal)
+        => subtotal + _shipping.Calculate(subtotal);
+}</code></pre><p>Standard, Express ou FreeAboveThreshold partagent le même contrat sans modifier Checkout.</p></article>
+  <aside class="note"><strong>Ne pas appliquer les patterns mécaniquement</strong><p>Une interface par classe ne garantit ni SRP ni DIP. Le repository produits existe parce qu'il sert un besoin pédagogique concret ; OrderService utilise directement EF pour montrer l'autre compromis.</p></aside>
+  <details class="check"><summary>Repérer les autres patterns</summary><p>Factory choisit quoi construire. Adapter traduit un contrat externe. Decorator enveloppe un collaborateur pour ajouter un comportement.</p></details>
+  <a class="source" href="../parcours/10-conception.md">Ouvrir le chapitre Markdown complet →</a>
+</section>

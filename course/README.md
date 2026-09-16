@@ -1,10 +1,15 @@
-# Cours HTML interactif — proposition Codebase-to-Course
+# Workbook interactif
 
-Ce dossier propose une vue interactive du workbook sans remplacer les Markdown. Les fichiers `parcours/` et `approfondissements/` restent la source éditoriale détaillée ; le cours HTML met en scène les mêmes objectifs sous forme de flux, traductions code → explication, quiz et checkpoints.
+Cette vue HTML accompagne le parcours Markdown sans le remplacer.
 
-## Construire
+## Principe
 
-Depuis la racine du dépôt :
+- un chapitre Markdown = une section HTML principale ;
+- les ateliers HTTP, SQLite et les défis restent des sections séparées ;
+- les interactions sont utilisées avec parcimonie (quiz ciblé, détails révélables, checklist d'atelier) ;
+- les Markdown restent la source détaillée et les exercices continuent à se faire dans le projet personnel.
+
+## Générer
 
 ```bash
 bash course/build.sh
@@ -12,26 +17,6 @@ bash course/build.sh
 
 Puis ouvrir `course/index.html` dans un navigateur.
 
-## Découpage
+## Structure
 
-| Module interactif | Workbook couvert |
-|---|---|
-| 1 — Prendre pied dans .NET | `00-demarrer.md`, `01-csharp.md` |
-| 2 — Objets, LINQ et dépendances | `02-objets.md`, `03-collections-linq.md`, `04-dependances.md` |
-| 3 — HTTP et async | `05-api-http.md`, `06-async-erreurs.md`, atelier HTTP, défi recherche |
-| 4 — EF Core et commandes | `07-persistance.md`, `08-commandes.md`, atelier SQLite |
-| 5 — Tests et conception | `09-tests.md`, `10-conception.md`, défi renommage |
-| 6 — Bilan et carte de progression | `11-bilan.md`, `notions.md`, liens vers les approfondissements |
-
-## Principes
-
-- Les exemples de code sont repris du workbook ou des applications de référence.
-- Les interactions servent la méthode déjà présente dans le support : prédire → exécuter → observer → expliquer → modifier → comparer.
-- Chaque module contient au moins un bloc code ↔ explication et un quiz d'application.
-- Le module HTTP contient une conversation entre composants et un flux requête/réponse animé.
-- Les ateliers restent des activités à réaliser dans le projet personnel ; la version HTML fournit des checkpoints et des critères, pas un éditeur C# factice.
-- Les approfondissements restent accessibles à la demande plutôt que d'être injectés dans le flux principal.
-
-## Maintenance
-
-`_base.html` + `modules/*.html` + `_footer.html` sont assemblés par `build.sh`. `styles.css` et `main.js` sont autonomes et spécifiques à ce dépôt. Le design reprend le modèle d'interaction de `codebase-to-course` sans dépendance JavaScript externe.
+Le sommaire reprend explicitement 00 → 11 et distingue quatre groupes : Fondations, Backend, Qualité & conception, Ateliers. L'objectif est de conserver les repères du workbook au lieu de condenser plusieurs chapitres en macro-modules.

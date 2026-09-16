@@ -1,0 +1,8 @@
+<section class="lesson atelier" id="atelier-sqlite" data-title="Atelier SQLite">
+  <header class="lesson-header"><span class="eyebrow">Atelier B</span><h1>Remplacer la mémoire par SQLite</h1><p class="objective">Conserver les routes et le JSON, mais changer l'endroit où vivent les données.</p></header>
+  <div class="workshop-card"><h2>Étape 1 · Préparer EF Core</h2><label class="checkpoint"><input type="checkbox"> <span>Ajouter les packages SQLite/Design, le DbContext et la chaîne de connexion.</span></label></div>
+  <div class="workshop-card"><h2>Étape 2 · Passer le service en async</h2><label class="checkpoint"><input type="checkbox"> <span>Lire via <code>ToListAsync</code>, créer via <code>Add</code> puis <code>SaveChangesAsync</code>.</span></label></div>
+  <div class="workshop-card"><h2>Étape 3 · Migration et redémarrage</h2><label class="checkpoint"><input type="checkbox"> <span>Générer <code>InitialCreate</code>, appliquer la migration, créer puis relire après redémarrage.</span></label></div>
+  <details class="check"><summary>Expérience importante</summary><p>Retire temporairement <code>SaveChangesAsync</code>. Le POST peut produire un objet, mais une nouvelle requête ne le retrouve pas.</p></details>
+  <a class="source" href="../parcours/ateliers/02-ajouter-sqlite.md">Ouvrir l'atelier détaillé →</a>
+</section>

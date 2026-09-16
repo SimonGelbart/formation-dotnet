@@ -1,0 +1,15 @@
+<section class="lesson" id="chapter-03" data-title="03 — Collections et LINQ">
+  <header class="lesson-header"><span class="eyebrow">Chapitre 03 · Fondations</span><h1>Manipuler un catalogue</h1><p class="objective">Objectif : choisir une collection, filtrer, trier et projeter les produits avec LINQ.</p><div class="levels"><span>Pratiquer · List, Dictionary, LINQ</span><span>Comprendre · IEnumerable et exécution différée</span></div></header>
+  <div class="compare-simple"><article><h2>JavaScript</h2><pre><code>filter
+map
+some
+every</code></pre></article><article><h2>C#</h2><pre><code>Where
+Select
+Any
+All</code></pre></article></div>
+  <article><h2>Une requête peut rester différée</h2><pre><code>var cheap = products.Where(p => p.Price &lt; 20m);
+products.Add(new Product(4, "Câble", 5m));
+Console.WriteLine(cheap.Count()); // 2</code></pre><p><code>Where</code> décrit ici une séquence. <code>Count()</code> la parcourt après l'ajout. Ajouter <code>ToList()</code> matérialise immédiatement le résultat.</p></article>
+  <aside class="note"><strong>Choix simple</strong><p>Liste pour parcourir/ajouter, dictionnaire pour retrouver souvent par clé, HashSet pour l'unicité.</p></aside>
+  <a class="source" href="../parcours/03-collections-linq.md">Ouvrir le chapitre Markdown complet →</a>
+</section>

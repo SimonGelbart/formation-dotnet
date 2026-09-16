@@ -1,0 +1,12 @@
+<section class="lesson" id="chapter-05" data-title="05 — API HTTP">
+  <header class="lesson-header"><span class="eyebrow">Chapitre 05 · Backend</span><h1>Exposer le catalogue en HTTP</h1><p class="objective">Objectif : créer un produit avec POST, récupérer son <code>Location</code>, puis le relire avec GET.</p><div class="levels"><span>Pratiquer · GET, POST, DTO, validation</span><span>Comprendre · routage, DI, lifetimes</span></div></header>
+  <article><h2>Une seule chaîne à suivre</h2><div class="flow"><span>HTTP</span><span>Controller</span><span>Service</span><span>Repository</span><span>Réponse</span></div><p>ASP.NET Core transforme la route et le JSON en paramètres C# puis appelle l'action correspondante.</p></article>
+  <article><h2>Le contrat HTTP reste explicite</h2><pre><code>[HttpPost]
+public ActionResult&lt;ProductResponse&gt; Create(ProductRequest request)
+{
+    var product = _service.Create(request.Name, request.Price);
+    return CreatedAtAction(nameof(GetById), new { id = product.Id }, ProductResponse.From(product));
+}</code></pre><p>Le Controller décide ici du statut <code>201</code>. Le service ne connaît pas HTTP.</p></article>
+  <aside class="note"><strong>Lifetime à observer</strong><p>Le repository mémoire est Singleton pour conserver les produits entre requêtes. Le service peut être Scoped.</p></aside>
+  <a class="source" href="../parcours/05-api-http.md">Ouvrir le chapitre Markdown complet →</a>
+</section>
