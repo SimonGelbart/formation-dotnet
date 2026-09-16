@@ -7,7 +7,7 @@ Correction des [chapitres 7](../../07-persistance.md), [8](../../08-commandes.md
 Depuis la racine du dépôt :
 
 ```bash
-cd workbook_v2/exemples/02-api-sqlite
+cd parcours/exemples/02-api-sqlite
 dotnet restore Catalogue.sln
 dotnet build Catalogue.sln
 dotnet tool restore
