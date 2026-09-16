@@ -19,7 +19,7 @@ dotnet run --urls http://localhost:5080
 
 La migration est à générer une seule fois : l'inspection du schéma fait partie de l'exercice. Elle contiendra Products, Orders et OrderItem. Après cette première préparation, relance seulement `dotnet run` depuis Catalogue.Api. Les modifications futures du modèle donnent lieu à de nouvelles migrations.
 
-L'outil EF et les packages EF sont fixés à 10.0.0. Le manifeste local évite de dépendre d'un outil global d'une autre version. Si tu mets à jour le support, mets à jour ces versions ensemble.
+L'outil EF et les packages .NET 10 de cette référence sont alignés sur 10.0.12. Le manifeste local évite de dépendre d'un outil global d'une autre version. Si tu mets à jour le support, mets à jour ces versions ensemble.
 
 ## Scénario manuel
 

@@ -9,10 +9,10 @@ L'objectif est de conserver les routes et le JSON tout en changeant le stockage.
 Depuis ton dossier MonCatalogue, API arrêtée :
 
 ```bash
-dotnet add package Microsoft.EntityFrameworkCore.Sqlite --version 10.0.0
-dotnet add package Microsoft.EntityFrameworkCore.Design --version 10.0.0
+dotnet package add Microsoft.EntityFrameworkCore.Sqlite --version 10.0.12
+dotnet package add Microsoft.EntityFrameworkCore.Design --version 10.0.12
 dotnet new tool-manifest
-dotnet tool install dotnet-ef --version 10.0.0
+dotnet tool install dotnet-ef --version 10.0.12
 ```
 
 Si un manifeste existe déjà dans ce projet, ne le recrée pas : restaure ses outils avec `dotnet tool restore`. Si dotnet-ef y est déjà déclaré, ne le réinstalle pas. Les versions d'EF sont alignées sur les références.
