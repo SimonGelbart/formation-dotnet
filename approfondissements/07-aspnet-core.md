@@ -1,10 +1,10 @@
 # 7 — Approfondir ASP.NET Core
 
-> **Prérequis conseillé :** [workbook v2 — 05 API HTTP](../workbook_v2/05-api-http.md).
+> **Prérequis conseillé :** [parcours principal — 05 API HTTP](../parcours/05-api-http.md).
 >
 > **Niveau :** À approfondir pour le pipeline et les erreurs · Nuance pour les lifetimes et CORS · Référence pour Options, HttpClientFactory et OpenAPI.
 
-La v2 montre comment construire et appeler une API. Ce chapitre répond plutôt à la question :
+Le parcours principal montre comment construire et appeler une API. Ce chapitre répond plutôt à la question :
 
 > **qu'est-ce qui se passe réellement entre la requête HTTP et la réponse ?**
 
@@ -402,4 +402,4 @@ Consulte-le quand tu te demandes :
 - où mettre configuration, logging ou appel HTTP externe ;
 - pourquoi un front est bloqué par CORS alors que `curl` fonctionne.
 
-Pour construire l'API pas à pas, retourne au [workbook v2](../workbook_v2/README.md).
+Pour construire l'API pas à pas, retourne au [parcours principal](../parcours/README.md).
