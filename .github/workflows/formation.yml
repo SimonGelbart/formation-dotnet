@@ -19,6 +19,11 @@ jobs:
         with:
           python-version: '3.12'
       - run: python scripts/check_support.py
+      - name: Construire le cours HTML
+        run: |
+          bash course/build.sh
+          test -s course/index.html
+          grep -q 'id="module-6"' course/index.html
 
   exemples:
     runs-on: ubuntu-latest
