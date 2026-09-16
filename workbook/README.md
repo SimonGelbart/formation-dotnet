@@ -2,7 +2,7 @@
 
 Ce dossier complète le **workbook v2**, qui reste le parcours principal à suivre dans l'ordre.
 
-Commence par :
+La v2 est actuellement proposée dans la [PR #1](https://github.com/SimonGelbart/formation-dotnet/pull/1). Après sa fusion, son point d'entrée sera :
 
 > [`workbook_v2/README.md`](../workbook_v2/README.md)
 
