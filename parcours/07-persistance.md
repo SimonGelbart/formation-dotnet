@@ -31,7 +31,7 @@ Un `.csproj` décrit un projet ; une solution regroupe des projets. La référen
 
 Dans le `.csproj` de l'API, `PackageReference` ajoute une bibliothèque NuGet : rôle comparable à une dépendance npm. Le projet de tests utilise aussi `ProjectReference` pour référencer le code source de l'API. Des packages peuvent dépendre d'autres packages : ce sont les dépendances transitives.
 
-Depuis `workbook_v2/exemples/02-api-sqlite` :
+Depuis `parcours/exemples/02-api-sqlite` :
 
 ```bash
 dotnet restore Catalogue.sln
