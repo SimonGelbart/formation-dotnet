@@ -14,6 +14,8 @@ Le workflow [Validation formation](.github/workflows/formation.yml) s'exécute s
 
 Les vérifications de migration sont distinctes des tests d'intégration qui utilisent EnsureCreated. Les migrations d'exercice sont générées depuis le modèle actuel dans la copie temporaire ; le contrôle ne valide pas un historique de migrations de production.
 
+Les références .NET 10, EF Core et `dotnet-ef` sont alignées sur **10.0.12**. La validation doit rester sans avertissement NuGet de vulnérabilité connu (`NU1901` à `NU1904`) ; si un tel avertissement apparaît après une mise à jour ou la publication d'un nouvel avis de sécurité, traite-le avant de considérer le support comme validé.
+
 ## Exécuter localement
 
 Depuis la racine du dépôt, avec Python 3.10+ :
