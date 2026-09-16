@@ -1,6 +1,6 @@
-# Carte des notions — ce que conserve la v2
+# Carte des notions — parcours principal et approfondissements
 
-Cette carte permet de retrouver les notions du workbook initial sans imposer la même profondeur partout.
+Cette carte indique le niveau visé dans le parcours principal et où retrouver les sujets qui méritent une seconde lecture.
 
 | Notion | Emplacement | Niveau visé |
 |---|---|---|
@@ -38,4 +38,4 @@ Cette carte permet de retrouver les notions du workbook initial sans imposer la 
 
 Injection par propriété/méthode, égalité personnalisée complète, ref/in/out, détails runtime des nullables, global.json et politiques de SDK, Options avancées, chargement explicite/lazy détaillé, optimisation SQL et projections complexes.
 
-Le [workbook initial](../workbook/README.md) reste disponible pour ces approfondissements. Il n'est pas nécessaire de le lire en parallèle à chaque chapitre.
+La [référence d'approfondissement](../approfondissements/README.md) développe ces sujets. Il n'est pas nécessaire de la lire en parallèle à chaque chapitre.
