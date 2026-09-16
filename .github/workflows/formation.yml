@@ -19,6 +19,15 @@ jobs:
         with:
           python-version: '3.12'
       - run: python scripts/check_support.py
+      - name: Construire le workbook HTML
+        run: |
+          bash course/build.sh
+          test -s course/index.html
+          grep -q 'id="chapter-00"' course/index.html
+          grep -q 'id="chapter-11"' course/index.html
+          grep -q 'id="atelier-http"' course/index.html
+          grep -q 'id="atelier-sqlite"' course/index.html
+          grep -q 'id="defis"' course/index.html
 
   exemples:
     runs-on: ubuntu-latest

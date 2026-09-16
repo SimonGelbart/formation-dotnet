@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Formation .NET — workbook interactif</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="main.js" defer></script>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<div class="layout">
+  <aside class="sidebar" aria-label="Sommaire du workbook">
+    <a class="brand" href="#intro">Formation .NET</a>
+    <p class="sidebar-kicker">Workbook interactif</p>
+    <nav class="toc">
+      <div class="toc-group"><span>Fondations</span><a href="#chapter-00">00 · Démarrer</a><a href="#chapter-01">01 · C#</a><a href="#chapter-02">02 · Objets</a><a href="#chapter-03">03 · Collections & LINQ</a><a href="#chapter-04">04 · Dépendances</a></div>
+      <div class="toc-group"><span>Backend</span><a href="#chapter-05">05 · API HTTP</a><a href="#chapter-06">06 · Async & erreurs</a><a href="#chapter-07">07 · Persistance</a><a href="#chapter-08">08 · Commandes</a></div>
+      <div class="toc-group"><span>Qualité & conception</span><a href="#chapter-09">09 · Tests</a><a href="#chapter-10">10 · Conception</a><a href="#chapter-11">11 · Bilan</a></div>
+      <div class="toc-group"><span>Ateliers</span><a href="#atelier-http">A · Construire l'API</a><a href="#atelier-sqlite">B · Ajouter SQLite</a><a href="#defis">C · Défis autonomes</a></div>
+    </nav>
+  </aside>
+  <main class="course">
+    <header class="course-intro" id="intro">
+      <span class="eyebrow">Du catalogue aux commandes</span>
+      <h1>Apprendre .NET en suivant le workbook, chapitre par chapitre.</h1>
+      <p>Cette version HTML n'essaie plus de condenser plusieurs chapitres en une présentation. Elle sert de compagnon de lecture : un chapitre = une section, les ateliers sont séparés, et les Markdown restent la référence détaillée.</p>
+      <div class="howto"><div><strong>1. Lire</strong><span>Comprendre l'idée du chapitre.</span></div><div><strong>2. Pratiquer</strong><span>Faire l'exercice dans ton projet.</span></div><div><strong>3. Vérifier</strong><span>Utiliser la question ou l'expérience proposée.</span></div></div>
+    </header>

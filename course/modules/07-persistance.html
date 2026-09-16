@@ -1,0 +1,11 @@
+<section class="lesson" id="chapter-07" data-title="07 — Persistance">
+  <header class="lesson-header"><span class="eyebrow">Chapitre 07 · Backend</span><h1>Conserver les produits avec SQLite</h1><p class="objective">Objectif : retrouver un produit après l'arrêt puis le redémarrage de l'API.</p><div class="levels"><span>Pratiquer · migration, lecture, sauvegarde</span><span>Comprendre · tracking, IQueryable, NuGet</span></div></header>
+  <article><h2>La frontière de sauvegarde</h2><pre><code>_db.Products.Add(product);
+await _db.SaveChangesAsync(cancellationToken);</code></pre><p><code>Add</code> fait suivre l'entité. <code>SaveChangesAsync</code> envoie effectivement les changements vers SQLite.</p></article>
+  <article><h2>LINQ devient SQL</h2><pre><code>var query = _db.Products
+    .Where(p => p.Name.StartsWith("C"))
+    .OrderBy(p => p.Name);
+var products = await query.ToListAsync(cancellationToken);</code></pre><p>Tant que la requête reste un <code>IQueryable</code>, EF peut la traduire. <code>ToListAsync</code> déclenche l'exécution.</p></article>
+  <details class="check"><summary>Expérience de sauvegarde</summary><p>Commente temporairement <code>SaveChangesAsync</code>, fais un PUT/POST puis relis avec une nouvelle requête : l'ancien état réapparaît.</p></details>
+  <a class="source" href="../parcours/07-persistance.md">Ouvrir le chapitre Markdown complet →</a>
+</section>

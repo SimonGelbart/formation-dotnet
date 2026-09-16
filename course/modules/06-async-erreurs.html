@@ -1,0 +1,8 @@
+<section class="lesson" id="chapter-06" data-title="06 — Async et erreurs">
+  <header class="lesson-header"><span class="eyebrow">Chapitre 06 · Backend</span><h1>Attendre et gérer les erreurs</h1><p class="objective">Objectif : appeler l'API sans bloquer un thread pendant l'attente réseau et distinguer absence, erreur technique et conflit métier.</p><div class="levels"><span>Pratiquer · Task, async, await</span><span>Comprendre · annulation, ressources</span></div></header>
+  <article><h2><code>Task&lt;T&gt;</code> est proche d'une Promise</h2><pre><code>var products = await client.GetFromJsonAsync&lt;List&lt;ProductResponse&gt;&gt;(
+    "/products", timeout.Token);</code></pre><p><code>await</code> suspend la méthode jusqu'au résultat. Il ne signifie pas « créer un nouveau thread ».</p></article>
+  <div class="compare-simple"><article><h2>≈ 1000 ms</h2><p>Deux <code>Task.Delay(500)</code> attendues l'une après l'autre.</p></article><article><h2>≈ 500 ms</h2><p>Deux attentes indépendantes avec <code>Task.WhenAll</code>.</p></article></div>
+  <aside class="note"><strong>Propagation</strong><p>Un <code>CancellationToken</code> n'est utile que s'il est transmis jusqu'aux opérations qui savent l'honorer.</p></aside>
+  <a class="source" href="../parcours/06-async-erreurs.md">Ouvrir le chapitre Markdown complet →</a>
+</section>

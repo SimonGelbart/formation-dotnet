@@ -1,0 +1,7 @@
+<section class="lesson" id="chapter-11" data-title="11 — Bilan">
+  <header class="lesson-header"><span class="eyebrow">Chapitre 11 · Bilan</span><h1>Réaliser une évolution seul</h1><p class="objective">Défi final : ajouter une description facultative au produit, persistée, exposée en HTTP et couverte par un test.</p></header>
+  <article><h2>Critères de réussite</h2><ol class="steps"><li>L'ancien POST sans description fonctionne encore.</li><li>POST et PUT acceptent la description ; GET la renvoie.</li><li>La donnée survit à un redémarrage.</li><li>Un test vérifie l'évolution.</li><li>Les tests existants restent verts.</li></ol></article>
+  <div class="howto"><div><strong>Pratiquer</strong><span>Modifier endpoint, modèle, persistance, test.</span></div><div><strong>Comprendre</strong><span>Expliquer le trajet HTTP → base.</span></div><div><strong>Repérer</strong><span>Identifier middleware, N+1, pattern utile.</span></div></div>
+  <aside class="note"><strong>Le bon réflexe</strong><p>Si tu bloques sur la syntaxe, cherche-la. Si tu bloques sur le trajet d'une donnée, suis un appel unique au débogueur depuis HTTP jusqu'à la base.</p></aside>
+  <a class="source" href="../parcours/11-bilan.md">Ouvrir le bilan Markdown complet →</a>
+</section>

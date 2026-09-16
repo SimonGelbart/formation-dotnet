@@ -1,0 +1,12 @@
+<section class="lesson" id="chapter-04" data-title="04 — Dépendances">
+  <header class="lesson-header"><span class="eyebrow">Chapitre 04 · Fondations</span><h1>Faire collaborer les objets</h1><p class="objective">Objectif : remplacer l'origine du catalogue sans modifier le service qui l'utilise.</p><div class="levels"><span>Pratiquer · interface, injection constructeur</span><span>Comprendre · composition, polymorphisme</span></div></header>
+  <article><h2>Le service reçoit son collaborateur</h2><pre><code>public class CatalogService
+{
+    private readonly IProductCatalog _catalog;
+    public CatalogService(IProductCatalog catalog) => _catalog = catalog;
+    public int Count() => _catalog.GetAll().Count;
+}</code></pre><p>Le service dépend d'un contrat. <code>MemoryCatalog</code> et <code>EmptyCatalog</code> peuvent fournir des comportements différents derrière la même interface.</p></article>
+  <aside class="note"><strong>DI ≠ absence de new</strong><p>La construction a toujours lieu quelque part. L'intérêt est de sortir le choix du collaborateur du service qui l'utilise.</p></aside>
+  <div class="quiz" data-success="Exact : le choix est fait à l'extérieur du service." data-retry="Regarde le constructeur de CatalogService."><strong>Qui choisit l'implémentation ?</strong><div class="quiz-options"><button data-correct="false">CatalogService lui-même</button><button data-correct="true">Le code qui construit CatalogService</button><button data-correct="false">L'interface</button></div><p class="quiz-feedback"></p></div>
+  <a class="source" href="../parcours/04-dependances.md">Ouvrir le chapitre Markdown complet →</a>
+</section>

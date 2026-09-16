@@ -1,0 +1,13 @@
+<section class="lesson" id="chapter-01" data-title="01 — C#">
+  <header class="lesson-header"><span class="eyebrow">Chapitre 01 · Fondations</span><h1>Lire et écrire du C#</h1><p class="objective">Objectif : retrouver ses repères TypeScript, créer un objet et manipuler des types sans perdre le typage statique.</p><div class="levels"><span>Pratiquer · types, propriétés, méthodes</span><span>Comprendre · parallèle TypeScript</span></div></header>
+  <div class="compare-simple"><article><h2>TypeScript</h2><pre><code>const price = 30
+products.filter(...)
+Promise&lt;Product&gt;</code></pre></article><article><h2>C#</h2><pre><code>var price = 30m;
+products.Where(...)
+Task&lt;Product&gt;</code></pre></article></div>
+  <article><h2>Le point important sur <code>var</code></h2><p><code>var</code> demande au compilateur d'inférer le type. Il ne transforme pas la variable en <code>any</code>. Après <code>var name = "Alice";</code>, affecter <code>42</code> ne compile pas.</p><pre><code>var product = new Product { Name = "Clavier", Price = 30m };
+Console.WriteLine(product.TotalFor(2));</code></pre></article>
+  <aside class="note"><strong>Null explicite</strong><p><code>string?</code> annonce qu'une valeur peut manquer. <code>??</code> fournit un fallback et <code>?.</code> protège un accès.</p></aside>
+  <details class="check"><summary>À vérifier avant de continuer</summary><p>Une classe décrit la forme et le comportement. <code>new Product()</code> crée une instance. <code>decimal</code> est utilisé ici pour les prix.</p></details>
+  <a class="source" href="../parcours/01-csharp.md">Ouvrir le chapitre Markdown complet →</a>
+</section>

@@ -1,0 +1,15 @@
+<section class="lesson" id="chapter-09" data-title="09 — Tests">
+  <header class="lesson-header"><span class="eyebrow">Chapitre 09 · Qualité</span><h1>Tester un comportement</h1><p class="objective">Objectif : détecter une régression du prix historique ou un oubli de sauvegarde.</p><div class="levels"><span>Pratiquer · test métier, fake</span><span>Comprendre · unitaire vs intégration</span></div></header>
+  <article><h2>Le test raconte une règle</h2><pre><code>[Fact]
+public void OrderKeepsOriginalPrice()
+{
+    var product = new Product("Clavier", 30m);
+    var order = new Order();
+    order.AddItem(product, 2);
+    product.Update("Clavier", 50m);
+    Assert.Equal(60m, order.Total);
+}</code></pre><p>Pas de serveur ni de base : le test protège directement le comportement du domaine.</p></article>
+  <div class="compare-simple"><article><h2>Domaine</h2><p>Règles métier isolées.</p></article><article><h2>Intégration</h2><p>HTTP + DI + EF + SQLite en mémoire, avec relecture entre requêtes.</p></article></div>
+  <aside class="note"><strong>Fake ciblé</strong><p>Le fake repository n'essaie pas d'imiter tout EF. Il simule juste assez pour vérifier que le service sauvegarde.</p></aside>
+  <a class="source" href="../parcours/09-tests.md">Ouvrir le chapitre Markdown complet →</a>
+</section>
