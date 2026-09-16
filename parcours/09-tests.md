@@ -103,4 +103,6 @@ Le test vérifie un comportement observable ; il ne dépend pas du nom de la lis
 2. Quelle erreur le fake de sauvegarde permet-il de détecter ?
 3. Que vérifie la relecture HTTP que le test domaine ne vérifie pas ?
 
+Avant de continuer, réalise le [défi renommage](ateliers/03-defis-autonomes.md#défi-2--renommer-un-produit-sans-perdre-son-prix) dans une copie de la référence SQLite.
+
 Suite : [10 — Conception](10-conception.md).

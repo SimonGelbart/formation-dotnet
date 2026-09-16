@@ -52,6 +52,14 @@ parcours : persister avec EF Core
 ici     : comprendre IQueryable, change tracker, backing fields, loading et SQL généré
 ```
 
+## Lire les exemples sans mélanger les applications
+
+- **Code du parcours** : les liens vers `parcours/exemples/` désignent des fichiers exécutables ensemble.
+- **Extrait indépendant** : il illustre une idée et peut omettre les types ou l'environnement nécessaires. Il ne se colle pas tel quel dans l'API.
+- **Variante de conception** : un autre contrat ou modèle, à expérimenter séparément. CustomerId, IOrderRepository ou certaines signatures peuvent différer du parcours.
+
+Les sections « Expérience facultative » ne sont pas des étapes supplémentaires obligatoires. Chaque chapitre indique désormais son prérequis et le niveau de lecture attendu. Le parcours principal reste la source du scénario à reproduire.
+
 ## Méthode de lecture
 
 Pour un sujet qui mérite une expérience :

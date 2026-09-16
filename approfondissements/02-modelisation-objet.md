@@ -1,8 +1,14 @@
 # 2 — Modéliser avec les objets
 
-## Objectifs
+> **Prérequis conseillé :** [parcours principal — 02](../parcours/02-objets.md).
+>
+> **Niveau :** À approfondir pour encapsulation · Nuance pour égalité et mutabilité · Référence pour héritage avancé.
+>
+> **Statut des exemples :** extraits indépendants et variantes de conception. Ils ne constituent pas une suite de modifications à appliquer à Catalogue.Api. Les types manquants sont à définir dans une expérience séparée. Pour le code exécutable et ses signatures exactes, consulte les [applications du parcours](../parcours/README.md#environnement-et-applications-de-référence).
 
-À la fin de ce chapitre, tu dois savoir :
+## Questions abordées
+
+Cette référence aide à comprendre, selon ton besoin :
 
 - distinguer classe et instance ;
 - expliquer l'encapsulation ;
@@ -397,7 +403,7 @@ Pour chaque relation, choisis entre héritage, interface ou composition et justi
 
 ---
 
-## Application au projet fil rouge
+## Expérience facultative — variante indépendante
 
 Faire évoluer `Order` pour qu'une commande :
 

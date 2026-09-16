@@ -1,8 +1,14 @@
 # 8 — SQL et Entity Framework Core
 
-## Objectifs
+> **Prérequis conseillé :** [parcours principal — 07](../parcours/07-persistance.md).
+>
+> **Niveau :** À approfondir pour EF et SQL · Nuance pour traduction et chargement · Référence pour mapping avancé.
+>
+> **Statut des exemples :** extraits indépendants et variantes de conception. Ils ne constituent pas une suite de modifications à appliquer à Catalogue.Api. Les types manquants sont à définir dans une expérience séparée. Pour le code exécutable et ses signatures exactes, consulte les [applications du parcours](../parcours/README.md#environnement-et-applications-de-référence).
 
-À la fin de ce chapitre, tu dois savoir :
+## Questions abordées
+
+Cette référence aide à comprendre, selon ton besoin :
 
 - comprendre les concepts SQL minimums nécessaires à EF Core ;
 - expliquer le rôle d'un ORM ;
@@ -39,6 +45,12 @@ OrderItem
 `Order.Total` est calculé à partir des items. Il n'est pas stocké dans une colonne `Orders.Total`.
 
 ---
+
+## Variante utilisée dans ce chapitre
+
+Ce modèle ajoute CustomerId et un constructeur `Order(customerId)`. Il n'est pas celui de Catalogue.Api, qui utilise `new Order()` et `AddItem(Product, quantity)`. Les tables de lignes sont nommées OrderItems dans ces exemples SQL, contre OrderItem dans la référence principale. Adapte le nom au schéma de ta migration.
+
+Les dates sont stockées en DateTime UTC pour les tris SQLite. Les opérations sur decimal et leur traduction dépendent du provider et de sa version : inspecte la requête et exécute-la sur la base choisie avant de réutiliser une projection. Pour le premier parcours, le total est calculé après chargement des lignes. Une projection de résumé n'a pas besoin de charger les entités ; une règle métier utilisant Items, elle, exige que les lignes soient disponibles.
 
 # 1. SQL avant EF Core
 
@@ -262,7 +274,7 @@ public sealed class Order
     public Guid Id { get; private set; }
     public Guid CustomerId { get; private set; }
     public OrderStatus Status { get; private set; }
-    public DateTimeOffset CreatedAt { get; private set; }
+    public DateTime CreatedAt { get; private set; }
     public IReadOnlyCollection<OrderItem> Items => _items;
 
     public decimal Total => _items.Sum(x => x.Subtotal);
@@ -276,7 +288,7 @@ public sealed class Order
         Id = Guid.NewGuid();
         CustomerId = customerId;
         Status = OrderStatus.Draft;
-        CreatedAt = DateTimeOffset.UtcNow;
+        CreatedAt = DateTime.UtcNow;
     }
 
     public void AddItem(
@@ -685,7 +697,7 @@ Cette requête exprime directement un calcul que le provider peut traduire, au l
 
 ---
 
-## Application au projet fil rouge
+## Expérience facultative — variante indépendante
 
 Remplace progressivement `InMemoryOrderRepository` par `EfOrderRepository` sans réécrire les règles métier.
 

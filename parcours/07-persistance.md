@@ -4,6 +4,10 @@
 
 Résultat : un produit est encore présent après l'arrêt puis le redémarrage de l'API.
 
+## Transformer ton application
+
+Commence par l’[atelier SQLite](ateliers/02-ajouter-sqlite.md) : il fait évoluer ton API HTTP en conservant ses routes. Il ne demande pas encore d’ajouter les commandes. Reviens ensuite lire ce chapitre et comparer avec la référence.
+
 ## Changer d'application de référence
 
 Arrête l'API mémoire. Ouvre [l'API SQLite](exemples/02-api-sqlite/README.md). Elle contient aussi les commandes du chapitre suivant ; pour le moment, suis uniquement `ProductsController`, `ProductService`, `EfProductRepository` et `AppDbContext`.

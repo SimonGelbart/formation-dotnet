@@ -10,6 +10,20 @@ Il analyse plutôt les décisions derrière un modèle de commandes afin de rép
 
 > **pourquoi ce code est-il organisé ainsi, et quels problèmes chaque choix cherche-t-il à éviter ?**
 
+## Correspondance avec le code du parcours
+
+Les extraits sont des variantes raccourcies, pas le code exact de Catalogue.Api. La version exécutable fait autorité pour les exercices :
+
+| Sujet | Extraits de cette étude | Application principale |
+|---|---|---|
+| Ajouter une ligne | Paramètres id/nom/prix séparés | `AddItem(Product, quantity)` |
+| Refuser une confirmation | InvalidOperationException dans l'extrait | OrderConflictException, traduite en 409 |
+| Seconde confirmation | Non détaillée dans l'extrait | Explicitement refusée |
+| Accès aux données | Repository présenté comme possibilité | DbContext direct dans OrderService |
+| Nom de table des lignes | OrderItems dans les exemples SQL | OrderItem selon la migration fournie par convention |
+
+Ne remplace pas le domaine du parcours par ces extraits. Ouvre [Order.cs](../parcours/exemples/02-api-sqlite/Catalogue.Api/Models/Order.cs) pour vérifier le comportement réel.
+
 ## 1. Pourquoi `Order` protège-t-il son état ?
 
 Version fragile :

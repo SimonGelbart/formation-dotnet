@@ -8,7 +8,7 @@ Le parcours principal montre comment construire et appeler une API. Ce chapitre 
 
 > **qu'est-ce qui se passe réellement entre la requête HTTP et la réponse ?**
 
-Il n'est pas nécessaire de reconstruire une seconde API pour le lire.
+Il n'est pas nécessaire de reconstruire une seconde API pour le lire. Les blocs sont des extraits de référence ; les noms comme CustomerId ou ExternalApiOptions illustrent des variantes, pas des fichiers à ajouter automatiquement à Catalogue.Api.
 
 ## 1. Carte mentale d'une requête
 
@@ -40,6 +40,7 @@ Ce schéma situe des responsabilités. Il n'impose pas une architecture universe
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
+builder.Services.AddProblemDetails();
 builder.Services.AddScoped<OrderService>();
 
 var app = builder.Build();

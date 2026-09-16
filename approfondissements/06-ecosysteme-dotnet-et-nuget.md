@@ -1,8 +1,14 @@
 # 6 — Écosystème .NET et NuGet
 
-## Objectifs
+> **Prérequis conseillé :** [parcours principal — 07](../parcours/07-persistance.md).
+>
+> **Niveau :** À approfondir pour projets et dépendances · Nuance pour versions de SDK · Référence pour CLI et global.json.
+>
+> **Statut des exemples :** extraits indépendants et variantes de conception. Ils ne constituent pas une suite de modifications à appliquer à Catalogue.Api. Les types manquants sont à définir dans une expérience séparée. Pour le code exécutable et ses signatures exactes, consulte les [applications du parcours](../parcours/README.md#environnement-et-applications-de-référence).
 
-À la fin de ce chapitre, tu dois savoir :
+## Questions abordées
+
+Cette référence aide à comprendre, selon ton besoin :
 
 - distinguer SDK et runtime ;
 - vérifier l'environnement avec `dotnet --info` ;
@@ -15,7 +21,7 @@
 - comprendre NuGet et les dépendances transitives ;
 - installer et identifier `dotnet-ef`.
 
-Le chapitre 0 t'a appris juste assez de CLI pour lancer du code. Ici, on comprend réellement l'écosystème.
+Le [démarrage du parcours](../parcours/00-demarrer.md) suffit pour lancer du code. Cette référence explique les outils sans demander de reconstruire la solution.
 
 ---
 
@@ -391,7 +397,7 @@ Dans l'Order API :
 
 ---
 
-## Application au projet fil rouge
+## Expérience facultative — variante indépendante
 
 À ce stade, la solution minimale peut rester :
 
@@ -405,7 +411,7 @@ Ne crée pas quatre couches uniquement parce que tu connais leur nom. Le chapitr
 
 ### Checkpoint
 
-Tu dois pouvoir expliquer :
+Questions pour vérifier ta compréhension, sans prérequis pour poursuivre le parcours :
 
 - SDK vs runtime ;
 - `.csproj` vs `.slnx` ;

@@ -1,8 +1,14 @@
 # 1 — De TypeScript à C#
 
-## Objectifs
+> **Prérequis conseillé :** [parcours principal — 01](../parcours/01-csharp.md).
+>
+> **Niveau :** À approfondir pour système de types · Nuance pour passage des références · Référence pour syntaxe avancée.
+>
+> **Statut des exemples :** extraits indépendants et variantes de conception. Ils ne constituent pas une suite de modifications à appliquer à Catalogue.Api. Les types manquants sont à définir dans une expérience séparée. Pour le code exécutable et ses signatures exactes, consulte les [applications du parcours](../parcours/README.md#environnement-et-applications-de-référence).
 
-À la fin de ce chapitre, tu dois savoir expliquer :
+## Questions abordées
+
+Cette référence aide à expliquer, selon ton besoin :
 
 - pourquoi `var` en C# n'est pas l'équivalent de `any` ;
 - la différence entre type valeur et type référence ;
@@ -444,7 +450,7 @@ Expérimente la différence entre `0.1 + 0.2` avec `double`, puis avec `decimal`
 
 ---
 
-## Application au projet fil rouge
+## Expérience facultative — variante indépendante
 
 Créer les premiers types :
 

@@ -1,8 +1,14 @@
 # 5 — Exceptions, ressources et asynchronisme
 
-## Objectifs
+> **Prérequis conseillé :** [parcours principal — 06](../parcours/06-async-erreurs.md).
+>
+> **Niveau :** À approfondir pour exceptions et async · Nuance pour I/O et concurrence · Référence pour libération asynchrone.
+>
+> **Statut des exemples :** extraits indépendants et variantes de conception. Ils ne constituent pas une suite de modifications à appliquer à Catalogue.Api. Les types manquants sont à définir dans une expérience séparée. Pour le code exécutable et ses signatures exactes, consulte les [applications du parcours](../parcours/README.md#environnement-et-applications-de-référence).
 
-À la fin de ce chapitre, tu dois savoir :
+## Questions abordées
+
+Cette référence aide à comprendre, selon ton besoin :
 
 - utiliser `try`, `catch`, `finally` et `throw` ;
 - éviter les exceptions silencieusement avalées ;
@@ -243,9 +249,9 @@ utilise-la directement.
 
 ---
 
-## 9. Faire évoluer le repository du chapitre 3
+## 9. Comparer un contrat synchrone et un contrat asynchrone
 
-Au chapitre 3, nous avons utilisé :
+Considérons ce contrat synchrone indépendant :
 
 ```csharp
 public interface IOrderRepository
@@ -473,7 +479,7 @@ return await dbContext.Orders
 
 ---
 
-## Application au projet fil rouge
+## Expérience facultative — variante indépendante
 
 À ce stade :
 
@@ -486,7 +492,7 @@ return await dbContext.Orders
 
 ### Checkpoint final
 
-Tu dois pouvoir expliquer :
+Questions pour vérifier ta compréhension, sans prérequis pour poursuivre le parcours :
 
 1. pourquoi `Task<Order>` n'est pas un `Order` ;
 2. pourquoi `async` n'est pas synonyme de parallélisme ou de nouveau thread ;

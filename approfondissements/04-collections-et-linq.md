@@ -1,8 +1,14 @@
 # 4 — Génériques, collections et LINQ
 
-## Objectifs
+> **Prérequis conseillé :** [parcours principal — 03](../parcours/03-collections-linq.md).
+>
+> **Niveau :** À approfondir pour LINQ et collections · Nuance pour exécution différée · Référence pour complexité et hachage.
+>
+> **Statut des exemples :** extraits indépendants et variantes de conception. Ils ne constituent pas une suite de modifications à appliquer à Catalogue.Api. Les types manquants sont à définir dans une expérience séparée. Pour le code exécutable et ses signatures exactes, consulte les [applications du parcours](../parcours/README.md#environnement-et-applications-de-référence).
 
-À la fin de ce chapitre, tu dois savoir :
+## Questions abordées
+
+Cette référence aide à comprendre, selon ton besoin :
 
 - comprendre à quoi servent les génériques ;
 - choisir une collection adaptée ;
@@ -484,7 +490,7 @@ Une méthode d'extension reste fondamentalement une méthode statique avec une s
 
 ---
 
-## Application au projet fil rouge
+## Expérience facultative — variante indépendante
 
 Utilise LINQ pour :
 
@@ -494,11 +500,11 @@ Utilise LINQ pour :
 - construire un dictionnaire pour le repository mémoire ;
 - récupérer des résumés.
 
-La différence entre LINQ sur objets et LINQ traduit par EF Core sera approfondie au chapitre 8.
+La [référence EF Core](08-sql-et-ef-core.md) explique la différence entre LINQ sur objets et LINQ traduit vers SQL.
 
 ### Checkpoint
 
-Tu dois pouvoir expliquer :
+Questions pour vérifier ta compréhension, sans prérequis pour poursuivre le parcours :
 
 1. `List<T>` vs `Dictionary<TKey,TValue>` ;
 2. `TryGetValue` vs indexeur ;

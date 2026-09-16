@@ -4,6 +4,8 @@ Tu connais déjà les variables, les fonctions et les collections en JavaScript 
 
 **Objectif : comprendre, modifier et tester une petite API de catalogue et de commandes.** On conserve les notions importantes, mais on ne demande pas de toutes les maîtriser au même niveau.
 
+Commence par le [guide pratique](GUIDE.md) pour préparer les outils, organiser ton espace personnel et planifier tes séances.
+
 ## Trois niveaux d'apprentissage
 
 - **Pratiquer** : refaire avec peu d'aide, en consultant la syntaxe si nécessaire.
@@ -30,6 +32,14 @@ Une approximation utile est autorisée : « une interface décrit ce qu'un objet
 | [Bilan et exercice autonome](11-bilan.md) | Une évolution menée seul | Modification de bout en bout |
 
 La [carte des notions](notions.md) indique aussi où trouver les approfondissements complémentaires.
+
+## Construire entre les chapitres
+
+- Au chapitre 5 : [atelier HTTP](ateliers/01-construire-api.md), puis [défi de recherche](ateliers/03-defis-autonomes.md#défi-1--rechercher-des-produits).
+- Au chapitre 7 : [atelier SQLite](ateliers/02-ajouter-sqlite.md).
+- Après le chapitre 9 : [défi de renommage](ateliers/03-defis-autonomes.md#défi-2--renommer-un-produit-sans-perdre-son-prix), avant le bilan Description.
+
+Ces ateliers se font dans ton propre projet. Les corrections sont des points de comparaison.
 
 ## Comment travailler
 

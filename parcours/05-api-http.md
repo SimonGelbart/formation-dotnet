@@ -4,6 +4,10 @@
 
 Résultat : créer un produit avec une requête HTTP, puis le retrouver.
 
+## Construire avant de comparer
+
+Fais l’[atelier HTTP](ateliers/01-construire-api.md) dans ton projet personnel : GET, POST, puis extraction du service. Reviens ensuite ici pour expliquer les choix et comparer avec la référence plus complète. Termine par le [défi recherche](ateliers/03-defis-autonomes.md#défi-1--rechercher-des-produits).
+
 ## Partir d'un point de contrôle
 
 Ouvre [l'API mémoire](exemples/01-api-memoire/README.md) et suis ses commandes. Depuis la racine du dépôt :
