@@ -1,10 +1,10 @@
 # 11 — Étude de cas : décisions de conception de l'Order API
 
-> **Prérequis conseillé :** avoir terminé les chapitres principaux du [workbook v2](../workbook_v2/README.md).
+> **Prérequis conseillé :** avoir terminé les chapitres principaux du [parcours principal](../parcours/README.md).
 >
 > **Niveau :** À approfondir pour les décisions de conception · Nuance pour les compromis architecture/EF/tests.
 
-La v2 te fait construire et modifier une application. Ce chapitre ne demande pas de construire une seconde Order API.
+Le parcours principal te fait construire et modifier une application. Ce chapitre ne demande pas de construire une seconde Order API.
 
 Il analyse plutôt les décisions derrière un modèle de commandes afin de répondre à une question différente :
 
@@ -486,7 +486,7 @@ Ne commence pas par le nom du pattern. Commence par le problème.
 
 ## Questions de revue
 
-Après la v2, tu dois pouvoir utiliser cette étude de cas pour expliquer :
+Après le parcours principal, tu dois pouvoir utiliser cette étude de cas pour expliquer :
 
 1. pourquoi le prix historique est copié ;
 2. pourquoi la commande contrôle ses items ;
