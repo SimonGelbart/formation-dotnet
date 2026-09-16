@@ -1,5 +1,7 @@
 # Formation .NET — Ligne directrice
 
+> Nouveau parcours : [Workbook v2 — apprendre .NET en construisant une API](workbook_v2/README.md). Une progression guidée, du catalogue aux commandes, avec niveaux d’apprentissage, exercices corrigés et applications de référence.
+
 Objectif : remettre à niveau un développeur ayant déjà une expérience front-end, en s'appuyant sur ses acquis JavaScript/TypeScript pour l'amener progressivement vers C# et le développement backend .NET.
 
 ## 1. Passer de TypeScript à C#
@@ -230,3 +232,4 @@ L'objectif n'est pas d'apprendre des règles ou des patterns par cœur, mais de 
 - CQRS / MediatR
 - observabilité avancée
 - Kubernetes / cloud
+
