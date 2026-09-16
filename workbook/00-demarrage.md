@@ -1,45 +1,20 @@
-# 0 — Démarrer et exécuter les exemples
+# 0 — Bac à sable et débogage
 
-## Objectif
+> **Prérequis :** avoir commencé le [workbook v2](../workbook_v2/README.md).
+>
+> **Niveau :** À approfondir pour le débogage · Référence pour le CLI de base.
 
-Avant de parler de C#, de POO ou d'ASP.NET Core, il faut savoir **où écrire le code et comment l'exécuter**.
+Ce chapitre ne remplace pas le démarrage guidé de la v2. Il sert simplement de rappel lorsque tu veux isoler une notion C# dans un petit programme sans lancer toute l'API.
 
-Ce chapitre est volontairement court. Les détails sur le SDK, les projets, NuGet et les solutions viendront au chapitre 6.
-
-À la fin de ce chapitre, tu dois savoir :
-
-- vérifier que le SDK .NET est installé ;
-- créer un petit projet console ;
-- lancer un programme ;
-- repérer `Program.cs` et le fichier `.csproj` ;
-- modifier puis réexécuter un exemple du workbook.
-
----
-
-## 1. Vérifier .NET
-
-Dans un terminal :
+## Créer un bac à sable
 
 ```bash
-dotnet --info
-```
-
-Le workbook utilise .NET 10 comme référence. Tu dois au minimum voir un SDK .NET 10 installé.
-
-Si `dotnet` n'est pas reconnu, l'environnement n'est pas encore prêt : corrige cela avant de continuer.
-
----
-
-## 2. Créer un bac à sable
-
-Crée un projet console dédié aux petits exemples :
-
-```bash
-dotnet new console -n Sandbox
+dotnet new console -n Sandbox --framework net10.0
 cd Sandbox
+dotnet run
 ```
 
-Le dossier contient notamment :
+Les deux fichiers à repérer sont :
 
 ```text
 Sandbox/
@@ -47,48 +22,19 @@ Sandbox/
 └── Sandbox.csproj
 ```
 
-Pour l'instant, retiens simplement :
+`Program.cs` contient le code exécuté. Le `.csproj` décrit le projet ; son contenu est approfondi dans [Écosystème .NET et NuGet](06-ecosysteme-dotnet-et-nuget.md).
 
-- `Program.cs` contient le code exécuté ;
-- `Sandbox.csproj` décrit le projet ;
-- `dotnet run` compile puis exécute le programme.
+## Cycle d'expérimentation
 
----
-
-## 3. Premier programme
-
-Remplace le contenu de `Program.cs` par :
-
-```csharp
-var language = "C#";
-Console.WriteLine($"Hello {language}");
-```
-
-Puis :
-
-```bash
-dotnet run
-```
-
-Tu dois obtenir :
+Pour une nuance de cette référence :
 
 ```text
-Hello C#
-```
-
----
-
-## 4. La méthode de travail du workbook
-
-Pour les petits exemples, utilise ce projet `Sandbox` et suis ce cycle :
-
-```text
-1. lire le code
-2. prédire ce qu'il va faire
-3. l'exécuter
-4. expliquer le résultat avec tes propres mots
-5. modifier une chose
-6. réexécuter et observer
+1. lire
+2. prédire
+3. exécuter
+4. expliquer
+5. modifier une variable
+6. réexécuter
 ```
 
 Exemple :
@@ -101,51 +47,35 @@ copy = 20;
 Console.WriteLine(value);
 ```
 
-Avant d'exécuter : **prédis le résultat**.
-
-Ensuite seulement, lance :
+Ne lance pas immédiatement. Prédis d'abord le résultat, puis vérifie :
 
 ```bash
 dotnet run
 ```
 
-Cette habitude sera utilisée dans tout le workbook.
+## Utiliser le débogueur plutôt que multiplier les `Console.WriteLine`
 
----
+Pour les exemples un peu moins évidents, pose un breakpoint et observe :
 
-## 5. IDE ou éditeur
+- les variables locales ;
+- leur type ;
+- la pile d'appels ;
+- le chemin réellement exécuté ;
+- les exceptions et warnings.
 
-Utilise l'environnement de développement choisi par l'équipe : Visual Studio, JetBrains Rider, Visual Studio Code ou un autre éditeur compatible C#.
+Exemple : place un breakpoint sur `Console.WriteLine(value)` et compare `value` et `copy`.
 
-L'outil n'est pas le sujet de la formation. En revanche, apprends rapidement à :
+## Quand revenir ici ?
 
-- lancer le projet ;
-- lancer les tests ;
-- naviguer vers la définition d'un type ;
-- lire les erreurs et warnings du compilateur ;
-- utiliser le débogueur et poser un breakpoint.
+Utilise le `Sandbox` pour expérimenter notamment :
 
-### Mini-exercice de debug
-
-Place un breakpoint sur :
-
-```csharp
-Console.WriteLine(value);
+```text
+value type vs reference type
+Equals / GetHashCode
+exécution différée LINQ
+exceptions
+Task / await
+petites expériences de performance ou de collections
 ```
 
-Observe la valeur de `value` et de `copy` avant l'affichage.
-
----
-
-## Checkpoint
-
-Avant de continuer, tu dois être capable de répondre oui à ces questions :
-
-- `dotnet --info` fonctionne ;
-- je peux créer un projet console ;
-- je sais où se trouve `Program.cs` ;
-- je peux exécuter avec `dotnet run` ;
-- je sais modifier un exemple et observer son comportement ;
-- je sais au minimum poser un breakpoint dans mon IDE.
-
-Si c'est le cas, passe au chapitre 1 : **De TypeScript à C#**.
+Pour ASP.NET Core, EF Core et les tests HTTP, préfère les applications de référence de `workbook_v2` plutôt que de reconstruire une nouvelle application depuis ce dossier.
