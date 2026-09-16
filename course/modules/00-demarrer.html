@@ -1,0 +1,18 @@
+<section class="lesson" id="chapter-00" data-title="00 — Démarrer">
+  <header class="lesson-header">
+    <span class="eyebrow">Chapitre 00 · Fondations</span>
+    <h1>Démarrer et observer</h1>
+    <p class="objective">Objectif : créer, lancer et déboguer un premier programme .NET sans chercher à tout comprendre du framework.</p>
+    <div class="levels"><span>Pratiquer · CLI et débogage</span><span>Comprendre · SDK et runtime</span></div>
+  </header>
+  <div class="lesson-grid">
+    <article>
+      <h2>Le trajet minimal</h2>
+      <ol class="steps"><li>Vérifier le SDK avec <code>dotnet --info</code>.</li><li>Créer <code>Sandbox</code> en <code>net10.0</code>.</li><li>Modifier <code>Program.cs</code>.</li><li>Lancer avec <code>dotnet run</code>.</li></ol>
+      <pre><code>Console.WriteLine("Bonjour .NET");</code></pre>
+    </article>
+    <aside class="note"><strong>À retenir</strong><p>Le runtime exécute une application. Le SDK contient en plus les outils nécessaires pour la développer et la compiler.</p></aside>
+  </div>
+  <details class="check"><summary>Vérifier que j'ai compris</summary><p>Compiler vérifie et transforme le code avant exécution. Pour observer une variable sans ajouter de <code>Console.WriteLine</code>, place un breakpoint et utilise le débogueur.</p></details>
+  <a class="source" href="../parcours/00-demarrer.md">Ouvrir le chapitre Markdown complet →</a>
+</section>
