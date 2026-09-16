@@ -1,0 +1,63 @@
+@baseUrl = http://localhost:5080
+@productId = 00000000-0000-0000-0000-000000000000
+@orderId = 00000000-0000-0000-0000-000000000000
+
+### 1. Catalogue initial : 200, [] sur une base vide
+GET {{baseUrl}}/products
+
+### 2. Créer : 201. Copier l'id reçu dans productId ci-dessus.
+POST {{baseUrl}}/products
+Content-Type: application/json
+
+{"name":"Clavier","price":30}
+
+### 3. Lire : 200 après remplacement de productId
+GET {{baseUrl}}/products/{{productId}}
+
+### 4. Entrée invalide : 400
+POST {{baseUrl}}/products
+Content-Type: application/json
+
+{"name":"Clavier","price":-1}
+
+### 5. Modifier : 204
+PUT {{baseUrl}}/products/{{productId}}
+Content-Type: application/json
+
+{"name":"Clavier","price":40}
+
+### 6. Produit inconnu : 404
+GET {{baseUrl}}/products/00000000-0000-0000-0000-000000000000
+
+### 7. Créer une commande : 201. Copier l'id dans orderId.
+POST {{baseUrl}}/orders
+
+### 8. Confirmer sans ligne : 409
+POST {{baseUrl}}/orders/{{orderId}}/confirm
+
+### 9. Ajouter une ligne : 204
+POST {{baseUrl}}/orders/{{orderId}}/items
+Content-Type: application/json
+
+{"productId":"{{productId}}","quantity":2}
+
+### 10. Changer le prix catalogue : 204, la ligne reste à 40
+PUT {{baseUrl}}/products/{{productId}}
+Content-Type: application/json
+
+{"name":"Clavier","price":50}
+
+### 11. Confirmer : 204
+POST {{baseUrl}}/orders/{{orderId}}/confirm
+
+### 12. Lire : 200, status Confirmed, total 80
+GET {{baseUrl}}/orders/{{orderId}}
+
+### 13. Modifier après confirmation : 409
+POST {{baseUrl}}/orders/{{orderId}}/items
+Content-Type: application/json
+
+{"productId":"{{productId}}","quantity":1}
+
+### 14. Supprimer le produit : 204. La commande conserve son historique.
+DELETE {{baseUrl}}/products/{{productId}}

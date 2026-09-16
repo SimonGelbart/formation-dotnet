@@ -1,0 +1,30 @@
+@baseUrl = http://localhost:5080
+@productId = 00000000-0000-0000-0000-000000000000
+@orderId = 00000000-0000-0000-0000-000000000000
+
+### 1. Catalogue initial : 200, [] sur une base vide
+GET {{baseUrl}}/products
+
+### 2. Créer : 201. Copier l'id reçu dans productId ci-dessus.
+POST {{baseUrl}}/products
+Content-Type: application/json
+
+{"name":"Clavier","price":30}
+
+### 3. Lire : 200 après remplacement de productId
+GET {{baseUrl}}/products/{{productId}}
+
+### 4. Entrée invalide : 400
+POST {{baseUrl}}/products
+Content-Type: application/json
+
+{"name":"Clavier","price":-1}
+
+### 5. Modifier : 204
+PUT {{baseUrl}}/products/{{productId}}
+Content-Type: application/json
+
+{"name":"Clavier","price":40}
+
+### 6. Produit inconnu : 404
+GET {{baseUrl}}/products/00000000-0000-0000-0000-000000000000
