@@ -1,10 +1,10 @@
 # 0 — Bac à sable et débogage
 
-> **Prérequis :** avoir commencé le [workbook v2](../workbook_v2/README.md).
+> **Prérequis :** avoir commencé le [parcours principal](../parcours/README.md).
 >
 > **Niveau :** À approfondir pour le débogage · Référence pour le CLI de base.
 
-Ce chapitre ne remplace pas le démarrage guidé de la v2. Il sert simplement de rappel lorsque tu veux isoler une notion C# dans un petit programme sans lancer toute l'API.
+Ce chapitre ne remplace pas le démarrage guidé du parcours principal. Il sert simplement de rappel lorsque tu veux isoler une notion C# dans un petit programme sans lancer toute l'API.
 
 ## Créer un bac à sable
 
@@ -78,4 +78,4 @@ Task / await
 petites expériences de performance ou de collections
 ```
 
-Pour ASP.NET Core, EF Core et les tests HTTP, préfère les applications de référence de `workbook_v2` plutôt que de reconstruire une nouvelle application depuis ce dossier.
+Pour ASP.NET Core, EF Core et les tests HTTP, préfère les applications de référence de `parcours/` plutôt que de reconstruire une nouvelle application depuis ce dossier.
